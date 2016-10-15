@@ -56,6 +56,7 @@ public class BinaryTree {
     }
 
     public void getBinaryTree(String[] mots) {
+        // HEAD TEMP PERMET DE SAUVEGARDER LE NOEUD DE L'ARBRE  SUR LEQUEL ON EST
         BinaryTree headTemp = null;
 
         // initialisation de l'arbre
@@ -64,7 +65,6 @@ public class BinaryTree {
 
         for (int i = 0; i < mots.length; i++) {
             char[] mot = mots[i].toCharArray();
-                System.out.println(mot[1]);
             
             headTemp = BinaryTree.getHead();
             for (int j = 0; j < mot.length; j++) {
