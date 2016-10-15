@@ -57,50 +57,62 @@ public class BinaryTree {
 
     public void getBinaryTree(String[] mots) {
         BinaryTree headTemp = null;
+
+        // initialisation de l'arbre
+        setHead(new BinaryTree());
+        headTemp = getHead();
+
         for (int i = 0; i < mots.length; i++) {
             char[] mot = mots[i].toCharArray();
+                System.out.println(mot[1]);
+            
+            headTemp = BinaryTree.getHead();
             for (int j = 0; j < mot.length; j++) {
-                if (i == 0 && j == 0) {
-                    setHead(new BinaryTree());
-                    BinaryTree.getHead().setElement(mot[j]);
+                System.out.print(headTemp.getElement() );
+                // charger la tete de l'arbre
+                if (i == 0 && j < mot.length) {
+                    headTemp.setElement(mot[j]);
+                    headTemp.setDroite(new BinaryTree());
+                    headTemp = headTemp.getDroite();
                 } else {
-                    BinaryTree temp = BinaryTree.getHead();
-                    if (temp.getElement() == mot[j]) {
-                        BinaryTree right = temp;
-                        if (right == null) {
-                            right.setDroite(new BinaryTree());
-                            right.getDroite().setElement(mot[j]);
+                    if (headTemp.getElement() == mot[j]) {
+                        if (headTemp.getDroite() == null) {
 
-                        } else if (right.getElement() == mot[j]) {
-                            // tant que l'élément de droite soit le meme que la lettre du mot
+                            headTemp.setDroite(new BinaryTree());
+                            BinaryTree right = headTemp.getDroite();
+                            right.setElement(mot[j]);
+                            headTemp = right;
+
+                            // si l'élément de droite a été ajouté
+                        } else {
+                            BinaryTree right = headTemp.getDroite();
                             headTemp = right.getDroite();
-
-                            if (headTemp.getElement() == mot[j]) {
-
-                                // faire le swap
-                                headTemp = headTemp.getDroite();
-                                // si c'est null écrire Element
-                                if (headTemp == null) {
-                                    headTemp = new BinaryTree();
-                                    headTemp.setElement(mot[j]);
-                                } else if (headTemp.getElement() == ' ') {
-                                    headTemp.setElement(mot[j]);
-                                }
-                            }
                         }
-                    } else if (temp.getElement() != mot[j]) {
-                        BinaryTree left = temp;
-                        left.setGauche(new BinaryTree());
-                        left.getGauche().setElement(mot[j]);
+                    } else {
+                        if (headTemp.getGauche() == null) {
+
+                            headTemp.setGauche(new BinaryTree());
+                            BinaryTree left = headTemp.getGauche();
+                            // on met l'élément de droite sur le pointeur
+                            left.setElement(mot[j]);
+                            headTemp = left;
+                            
+                        } else {
+                            
+                            BinaryTree left = headTemp.getGauche();
+                            headTemp = left.getGauche();
+                        }
                     }
                 }
             }
         }
-
     }
 
     public static void main(String[] args) {
 
+        BinaryTree arbre = new BinaryTree();
+        String[] mots = {"Abdallah", "Abdel", "Abdelkader", "Abdellatif", "Abdou", "Abdul"};
+        arbre.getBinaryTree(mots);
     }
 
 }
