@@ -65,15 +65,18 @@ public class BinaryTree {
 
         for (int i = 0; i < mots.length; i++) {
             char[] mot = mots[i].toCharArray();
-            
+            System.out.println();
             headTemp = BinaryTree.getHead();
             for (int j = 0; j < mot.length; j++) {
-                System.out.print(headTemp.getElement() );
+
                 // charger la tete de l'arbre
                 if (i == 0 && j < mot.length) {
                     headTemp.setElement(mot[j]);
+                    System.out.print(headTemp.getElement() + "->");
+
                     headTemp.setDroite(new BinaryTree());
                     headTemp = headTemp.getDroite();
+
                 } else {
                     if (headTemp.getElement() == mot[j]) {
                         if (headTemp.getDroite() == null) {
@@ -82,25 +85,51 @@ public class BinaryTree {
                             BinaryTree right = headTemp.getDroite();
                             right.setElement(mot[j]);
                             headTemp = right;
+                            System.out.print(headTemp.getElement() + "->");
 
                             // si l'élément de droite a été ajouté
                         } else {
+
                             BinaryTree right = headTemp.getDroite();
-                            headTemp = right.getDroite();
+                            headTemp = right;
+                            System.out.print("-> ");
                         }
                     } else {
                         if (headTemp.getGauche() == null) {
 
                             headTemp.setGauche(new BinaryTree());
                             BinaryTree left = headTemp.getGauche();
-                            // on met l'élément de droite sur le pointeur
                             left.setElement(mot[j]);
                             headTemp = left;
-                            
+                            System.out.print(headTemp.getElement() + "->");
+
+                        } else if (headTemp.getGauche().getElement() != mot[j]) {
+                            boolean find = false;
+
+                            while (find == false) {
+                                BinaryTree left = headTemp.getGauche();
+
+                                if (left.getElement() == mot[j]) {
+                                    find = true;
+                                    headTemp = left;
+                                    System.out.print(headTemp.getElement() + "->");
+
+                                } else if (left.getElement() != mot[j]) {
+                                    if (left.getGauche() == null) {
+                                        left.setGauche(new BinaryTree());
+                                        left.setElement(mot[j]);
+                                        headTemp = left;
+                                        find = true;
+                                        System.out.print(headTemp.getElement() + "->");
+                                    } else {
+                                        headTemp = left;
+                                    }
+                                }
+                            }
                         } else {
-                            
                             BinaryTree left = headTemp.getGauche();
-                            headTemp = left.getGauche();
+                            headTemp = left;
+                            System.out.print("-> ");
                         }
                     }
                 }
