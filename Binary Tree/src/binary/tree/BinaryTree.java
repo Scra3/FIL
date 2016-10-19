@@ -7,8 +7,10 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.StringWriter;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.StringTokenizer;
 
 public class BinaryTree {
 
@@ -115,56 +117,41 @@ public class BinaryTree {
         return noeud;
     }
 
-    public int getToken(String mot) {
-        int token = -1;
-        Mot[] mots = BinaryTree.getLexique();
-        int i = 0;
-        boolean find = false;
-
-        while (i < mots.length || find == false) {
-            if (mot.equals(mots[i].getMot())) {
-                token = mots[i].getToken();
-                find = true;
-            }
-            i++;
-        }
-        return token;
-    }
-
     public void genererArbre(Mot[] mots) {
 
         // HEAD TEMP PERMET DE SAUVEGARDER LE NOEUD DE L'ARBRE  SUR LEQUEL ON EST
         BinaryTree noeud = null;
+        BinaryTree noeudPrecedent = null;
 
         // initialisation de l'arbre
         setRacine(new BinaryTree(new BinaryTree(), new BinaryTree()));
         racine = getRacine();
 
         for (int i = 0; i < mots.length; i++) {
-            char[] mot = mots[i].getMot().toCharArray();
+            char[] lettres = mots[i].getMot().toCharArray();
             // on crée l'objet mot 
 
             //System.out.println();
             noeud = BinaryTree.getRacine();
-            for (int j = 0; j < mot.length; j++) {
+
+            for (int j = 0; j < lettres.length; j++) {
 
                 // charger la tete de l'arbre
-                if (i == 0 && j < mot.length) {
-                    noeud.setElement(mot[j]);
-                    int poid = noeud.getWeight();
+                if (i == 0 && j < lettres.length) {
+                    noeud.setElement(lettres[j]);
+                    noeudPrecedent = noeud;
                     noeud = noeud.getRight();
                     noeud.creerfils();
-                    noeud.incrementerWeight(poid);
 
                 } else {
-                    noeud = noeud.getNode(mot[j]);
+                    noeudPrecedent = noeud;
+                    noeud = noeud.getNode(lettres[j]);
                 }
             }
             // Mettre sur le dernier noeud le token du mot 
-            int token = noeud.getToken(mots[i].getMot());
-            noeud.setWeight(token);
+            int token = mots[i].getToken();
+            noeudPrecedent.setWeight(token);
         }
-
     }
 
     public void splitFichier(BufferedReader fichier, String pathern) throws IOException {
@@ -175,7 +162,7 @@ public class BinaryTree {
         int i = 0;
         while ((line = fichier.readLine()) != null) {
 
-            String[] mot_token = line.split(" ");
+            String[] mot_token = line.split(pathern);
             Mot mot = new Mot(mot_token[0], Integer.parseInt(mot_token[1]));
             lexiqueTable[i] = mot;
             i++;
@@ -184,22 +171,82 @@ public class BinaryTree {
         BinaryTree.setLexique(lexiqueTable);
     }
 
-    public Map genererLexique(String fichier) {
-        Map<String, Integer> lexique = new HashMap<String, Integer>();
-
+    public String[] generateTable(String fichier, boolean choice) {
+        String texte = " ";
         try {
             InputStream flux = new FileInputStream(fichier);
             InputStreamReader ipsr = new InputStreamReader(flux);
             BufferedReader buff = new BufferedReader(ipsr);
-
-            this.splitFichier(buff, fichier);
+            if (choice == true) {
+                this.splitFichier(buff, " ");
+                return null;
+            } else {
+                return this.splitTexte(buff);
+            }
 
         } catch (IOException e) {
             System.out.println(e.toString());
             System.out.println("Impossible de lire le fichier");
         }
+        return null;
+    }
 
-        return lexique;
+    public String[] splitTexte(BufferedReader fichier) throws IOException {
+        String[] mots = null;
+        String line = " ";
+        String text = " ";
+
+        while ((line = fichier.readLine()) != null) {
+            text += line + " ";
+        }
+        fichier.close();
+
+        StringTokenizer st = new StringTokenizer(text);
+        mots = new String[st.countTokens()];
+
+        int i = 0;
+        while (st.hasMoreTokens()) {
+            mots[i] = st.nextToken();
+            i++;
+        }
+
+        return mots;
+    }
+
+    public Map<Integer, Integer> compterMot(String[] text) {
+        Map<Integer, Integer> nbTokens = new HashMap<Integer, Integer>();
+        BinaryTree noeudPrecedent = null;
+        for (int i = 0; i < text.length; i++) {
+            BinaryTree noeud = BinaryTree.getRacine();
+
+            char[] lettres = text[i].toCharArray();
+
+            for (int j = 0; j < lettres.length; j++) {
+                if (noeud.getElement() == lettres[j]) {
+                    // alors on va à droite
+                    noeudPrecedent = noeud;
+                    noeud = noeud.getRight();
+                } else if (noeud.getElement() != lettres[j]) {
+                    // alors on va à gauche
+                    noeudPrecedent = noeud;
+                    noeud = noeud.getLeft();
+                } else if (noeud.getElement() == ' ') {
+                    // mot inconnu
+                    noeudPrecedent = noeud;
+                    break;
+                }
+            }
+            int token = noeudPrecedent.getWeight();
+            System.out.println(token);
+            if (nbTokens.get(token) != null) {
+                int nb = nbTokens.get(token);
+                nbTokens.put(token, nb + 1);
+
+            } else {
+                nbTokens.put(token, 1);
+            }
+        }
+        return nbTokens;
     }
 
     // MAIN
@@ -208,18 +255,27 @@ public class BinaryTree {
         Mot[] mot_token = null;
 
         String fichier = "src/binary/tree/lexique.txt";
+        String texte = "src/binary/tree/texte";
 
         // on génère le lexique
-        binaryTree.genererLexique(fichier);
+        binaryTree.generateTable(fichier, true);
 
-        // on récupère seulement les mots du lexique
+        // on récupere le lexique
         mot_token = BinaryTree.getLexique();
 
+        // on genere l'arbre
         binaryTree.genererArbre(mot_token);
-        System.out.println(BinaryTree.getLexique()[0].getMot());
-        System.out.println("");
 
+        // on charge le texte dans un tableau de String
+        String[] textTable = binaryTree.generateTable(texte, false);
+        System.out.println(textTable[2]);
+
+        Map<Integer, Integer> nbTokens = binaryTree.compterMot(textTable);
+
+        //System.out.println(BinaryTree.getLexique()[0].getMot());
+        //System.out.println("");
         //System.out.println(lexique.get("zouloues"));
-        System.out.println("  MOT " + binaryTree.getRacine().getRight().getRight().getElement());
+        //System.out.println("  MOT " + binaryTree.getRacine().getRight().getRight().getElement());
     }
+
 }
