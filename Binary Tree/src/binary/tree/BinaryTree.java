@@ -1,3 +1,7 @@
+
+
+
+
 package binary.tree;
 
 import binary.tree.Mot;
@@ -197,6 +201,7 @@ public class BinaryTree {
             InputStream flux = new FileInputStream(fichier);
             InputStreamReader ipsr = new InputStreamReader(flux);
             BufferedReader buff = new BufferedReader(ipsr);
+
             if (choice == true) {
                 this.splitFichier(buff, " ");
                 return null;
@@ -266,11 +271,11 @@ public class BinaryTree {
 
     public Map<Integer, Integer> compterMot(String[] text) {
         Map<Integer, Integer> nbTokens = new HashMap<Integer, Integer>();
-        BinaryTree noeudPrecedent = null;
         BinaryTree noeud = null;
+        int token = -2;
+        int a = 0;
         //Pour chaque mot du texte
         for (int i = 0; i < text.length; i++) {
-
             noeud = BinaryTree.getRacine();
 
             char[] lettres = text[i].toCharArray();
@@ -281,7 +286,7 @@ public class BinaryTree {
                 // dernier appel
                 if (j + 1 == lettres.length) {
                     noeud = noeud.parcourirAbre(lettres[j], true);
-
+                   
                 } else {
                     noeud = noeud.parcourirAbre(lettres[j], false);
                     //Si le mot n'existe pas
@@ -290,28 +295,56 @@ public class BinaryTree {
                     }
                 }
             }
-            //System.out.println(noeud.getWeight());
+            if (token == -2) {
+                nbTokens = compteurToken(noeud, nbTokens);
+            } else {
+                i = a;
+                noeud.setWeight(token);
+                nbTokens = compteurToken(noeud, nbTokens);
+            }
+        }
+        return nbTokens;
+    }
 
-            if (noeud != null) {
-                int token = noeud.getWeight();
-                //System.out.println(token);
-                if (nbTokens.get(token) != null) {
-
-                    int nb = nbTokens.get(token);
-                    nbTokens.put(token, nb + 1);
-
-                } else {
-                    nbTokens.put(token, 1);
+    public BinaryTree verifierMotComposer(char[] lettres, BinaryTree noeud, int token) {
+        for (int j = 0; j < lettres.length; j++) {
+            if (j + 1 == lettres.length) {
+                noeud = noeud.parcourirAbre(lettres[j], true);
+                if (noeud == null) {
+                    break;
                 }
             } else {
-                // -1 est le token pour les mots qu'on ne connait pas = qui ne sont pas dans le lexique
-                if (nbTokens.get(-1) != null) {
-                    int nb = nbTokens.get(-1);
-                    nbTokens.put(-1, nb + 1);
-
-                } else {
-                    nbTokens.put(-1, 1);
+                noeud = noeud.parcourirAbre(lettres[j], false);
+                //Si le mot n'existe pas
+                if (noeud == null) {
+                    break;
                 }
+            }
+        }
+        return noeud;
+    }
+
+    public Map<Integer, Integer> compteurToken(BinaryTree noeud, Map<Integer, Integer> nbTokens) {
+
+        if (noeud != null) {
+            int token = noeud.getWeight();
+            //System.out.println(token);
+            if (nbTokens.get(token) != null) {
+
+                int nb = nbTokens.get(token);
+                nbTokens.put(token, nb + 1);
+
+            } else {
+                nbTokens.put(token, 1);
+            }
+        } else {
+            // -1 est le token pour les mots qu'on ne connait pas = qui ne sont pas dans le lexique
+            if (nbTokens.get(-1) != null) {
+                int nb = nbTokens.get(-1);
+                nbTokens.put(-1, nb + 1);
+
+            } else {
+                nbTokens.put(-1, 1);
             }
         }
         return nbTokens;
@@ -338,9 +371,8 @@ public class BinaryTree {
         String[] textTable = binaryTree.generateTable(texte, false);
 
         Map<Integer, Integer> nbTokens = binaryTree.compterMot(textTable);
-        System.out.println(nbTokens.get(49903));
-        
-        
+        System.out.println(nbTokens.get(-1));
+
         //System.out.println(BinaryTree.getLexique()[0].getMot());
         //System.out.println("");
         //System.out.println(lexique.get("zouloues"));
