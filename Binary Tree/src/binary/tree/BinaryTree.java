@@ -96,21 +96,36 @@ public class BinaryTree {
         this.setRight(new BinaryTree());
     }
 
-    public BinaryTree getNode(char element) {
-        BinaryTree noeud = new BinaryTree();
+    public BinaryTree getNode(char element, boolean dernierNoeud) {
+        BinaryTree noeud = this;
+        if (dernierNoeud == false) {
+            if (this.getElement() == element) {
+                noeud = this.getRight();
 
-        if (this.getElement() == element) {
-            noeud = this.getRight();
+            } else if (this.getElement() == ' ') {
 
-        } else if (this.getElement() == ' ') {
+                this.creerfils();
+                this.setElement(element);
+                noeud = this.getRight();
 
-            this.creerfils();
-            this.setElement(element);
-            noeud = this.getRight();
+            } else if (this.getElement() != element) {
+                noeud = this.getLeft();
+                noeud = noeud.getNode(element, false);
+            }
+        } else {
+            if (this.getElement() == element) {
+                noeud = this;
 
-        } else if (this.getElement() != element) {
-            noeud = this.getLeft();
-            noeud = noeud.getNode(element);
+            } else if (this.getElement() == ' ') {
+
+                this.creerfils();
+                this.setElement(element);
+                noeud = this;
+
+            } else if (this.getElement() != element) {
+                noeud = this.getLeft();
+                noeud = noeud.getNode(element, true);
+            }
         }
 
         // on cherche le token du mot
@@ -144,15 +159,18 @@ public class BinaryTree {
                     noeud.creerfils();
 
                 } else {
-                    noeudPrecedent = noeud;
-                    noeud = noeud.getNode(lettres[j]);
+                    // dernier noeud
+                    if (j + 1 == lettres.length) {
+                        noeudPrecedent = noeud.getNode(lettres[j], true);
+                    } else {
+                        noeudPrecedent = noeud;
+                        noeud = noeud.getNode(lettres[j], false);
+                    }
                 }
             }
             // Mettre sur le dernier noeud le token du mot 
             int token = mots[i].getToken();
             noeudPrecedent.setWeight(token);
-            //System.out.println(noeudPrecedent.getWeight());
-            //System.out.println(mots[i].getMot());
         }
     }
 
@@ -224,8 +242,10 @@ public class BinaryTree {
                 // alors on va à droite
                 noeud = noeud.getRight();
 
+                // le mot n'est pas dans le lexique
             } else if (noeud.getElement() == ' ') {
                 noeud = null;
+
             } else if (noeud.getElement() != lettre) {
                 //System.out.println("OK");
                 // alors on va à gauche
@@ -233,15 +253,12 @@ public class BinaryTree {
                 noeud = noeud.parcourirAbre(lettre, false);
             }
         } else {
-            if (noeud.getElement() == lettre) {
-                noeud = noeud;
-            } else if (noeud.getElement() == ' ') {
+            if (noeud.getElement() == ' ') {
                 noeud = null;
             } else if (noeud.getElement() != lettre) {
                 //System.out.println("OK");
                 // alors on va à gauche
-                noeud = noeud.getLeft();
-                noeud = noeud.parcourirAbre(lettre, true);
+                noeud = noeud.getLeft().parcourirAbre(lettre, true);
             }
         }
         return noeud;
@@ -264,14 +281,10 @@ public class BinaryTree {
                 // dernier appel
                 if (j + 1 == lettres.length) {
                     noeud = noeud.parcourirAbre(lettres[j], true);
-                    if (noeud.getRight().getElement() == '_') {
-                        // changer de mot
-                        i++;
-                        // remettre j à 0 
-                        break;
-                    }
+
                 } else {
                     noeud = noeud.parcourirAbre(lettres[j], false);
+                    //Si le mot n'existe pas
                     if (noeud == null) {
                         break;
                     }
@@ -325,8 +338,9 @@ public class BinaryTree {
         String[] textTable = binaryTree.generateTable(texte, false);
 
         Map<Integer, Integer> nbTokens = binaryTree.compterMot(textTable);
-        System.out.println(nbTokens.get(16431));
-
+        System.out.println(nbTokens.get(49903));
+        
+        
         //System.out.println(BinaryTree.getLexique()[0].getMot());
         //System.out.println("");
         //System.out.println(lexique.get("zouloues"));
