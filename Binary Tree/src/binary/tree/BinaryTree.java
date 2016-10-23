@@ -9,9 +9,13 @@ import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.StringTokenizer;
+import java.util.regex.Pattern;
 
 public class BinaryTree {
 
+    /*TOKEN */
+    final int DATETOKEN = -3;
+    final int URLTOKEN = -4;
     private char element; // lettre du noeud 
     private BinaryTree left; // noeud à gauche du noeud
     private BinaryTree right; // noeud à droite du noeud 
@@ -170,6 +174,7 @@ public class BinaryTree {
         racine = getRacine();
 
         for (int i = 0; i < mots.length; i++) {
+
             char[] lettres = mots[i].getMot().toCharArray();
             // on crée l'objet mot 
 
@@ -343,41 +348,56 @@ public class BinaryTree {
         for (int i = 0; i < text.length; i++) {
 
             noeud = BinaryTree.getRacine();
+            String mot = text[i];
+            // reconnaitre url
+            String regex = "^(https?|ftp|file)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]";
+            // une date
+            if (mot.matches("\\d{4}-\\d{2}-\\d{2}")) {
+                BinaryTree dateNoeud = new BinaryTree();
+                dateNoeud.setWeight(DATETOKEN);
+                nbTokens = compteurToken(dateNoeud, nbTokens);
+            } // une URL
+            else if (mot.matches(regex)) {
+                BinaryTree urlNoeud = new BinaryTree();
+                urlNoeud.setWeight(URLTOKEN);
+                nbTokens = compteurToken(urlNoeud, nbTokens);
+            } else {
 
-            char[] lettres = text[i].toCharArray();
+                char[] lettres = text[i].toCharArray();
 
-            // Pour chaque lettres du mot du texte
-            for (int j = 0; j < lettres.length; j++) {
+                // Pour chaque lettres du mot du texte
+                for (int j = 0; j < lettres.length; j++) {
 
-                // dernier appel : fin du mot
-                if (j + 1 == lettres.length) {
-                    noeud = noeud.parcourirAbre(lettres[j], true);
+                    // dernier appel : fin du mot
+                    if (j + 1 == lettres.length) {
+                        noeud = noeud.parcourirAbre(lettres[j], true);
                     //if (noeud.getRight().getElement() == '_') {
-                    //Appel pour chercher les mots composés : ne fonctionne pas 
+                        //Appel pour chercher les mots composés : ne fonctionne pas 
                         /* noeud = noeud.verifierMotCompose(text, i + 1);
                         
-                     if(noeud != null){
-                     token = noeud.getWeight();
-                     i = BinaryTree.getIndiceText();
-                     }*/
-                    //}
-                } // si on est pas a la fin du mot
-                else {
-                    if (noeud.getElement() == ' ') {
-                        break;
-                    }
-                    noeud = noeud.parcourirAbre(lettres[j], false);
-                    //Si le mot n'existe pas
-                    if (noeud == null) {
-                        break;
+                         if(noeud != null){
+                         token = noeud.getWeight();
+                         i = BinaryTree.getIndiceText();
+                         }*/
+                        //}
+                    } // si on est pas a la fin du mot
+                    else {
+                        if (noeud.getElement() == ' ') {
+                            break;
+                        }
+                        noeud = noeud.parcourirAbre(lettres[j], false);
+                        //Si le mot n'existe pas
+                        if (noeud == null) {
+                            break;
+                        }
                     }
                 }
-            }
-            if (token != -2) {
-                nbTokens = compteurToken(noeud, nbTokens);
-                token = -2;
-            } else {
-                nbTokens = compteurToken(noeud, nbTokens);
+                if (token != -2) {
+                    nbTokens = compteurToken(noeud, nbTokens);
+                    token = -2;
+                } else {
+                    nbTokens = compteurToken(noeud, nbTokens);
+                }
             }
         }
         return nbTokens;
@@ -433,7 +453,7 @@ public class BinaryTree {
      *
      * @param noeud Une instance de noeud
      * @param nbTokens Une map de sauvegarde
-     * 
+     *
      * @return Une instance de Map
      */
     public Map<Integer, Integer> compteurToken(BinaryTree noeud, Map<Integer, Integer> nbTokens) {
