@@ -1,35 +1,32 @@
-
-
-
-
 package binary.tree;
 
-import binary.tree.Mot;
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.StringWriter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.StringTokenizer;
 
 public class BinaryTree {
 
-    private char element;
-    private BinaryTree left;
-    private BinaryTree right;
-    private int weight;
-    private static BinaryTree racine;
-    private static Mot[] lexiqueTable;
+    private char element; // lettre du noeud 
+    private BinaryTree left; // noeud à gauche du noeud
+    private BinaryTree right; // noeud à droite du noeud 
+    private int weight; // token permmetant de reconnaitre la fin d'un mot dans l'arbre
+    private static BinaryTree racine; // la racine de l'arbre
+    private static Mot[] lexiqueTable; // le lexique qui est tableau de mots : token => mot
+    private static int indiceText = 0;
 
+    // Constructeur par défaut
     public BinaryTree() {
         this.element = ' ';
         this.weight = -1;
     }
 
+    // constructer pour définir la racine de l'arbre
     public BinaryTree(BinaryTree left, BinaryTree right) {
         this.element = ' ';
         this.left = left;
@@ -38,6 +35,14 @@ public class BinaryTree {
     }
 
     // GETTERS AND SETTERS
+    public static int getIndiceText() {
+        return indiceText;
+    }
+
+    public static void setIndiceText(int indiceText) {
+        BinaryTree.indiceText = indiceText;
+    }
+
     public char getElement() {
         return element;
     }
@@ -94,12 +99,22 @@ public class BinaryTree {
         BinaryTree.lexiqueTable = lexique;
     }
 
-    // FONCTIONS
     public void creerfils() {
         this.setLeft(new BinaryTree());
         this.setRight(new BinaryTree());
     }
 
+    // FONCTIONS
+    /**
+     * Récupère le prochain noeud de l'arbre
+     *
+     * @param element La lettre recherhé dans l'arbre.
+     * @param dernierNoeud Permet d'informer la fonction si elle doit renvoyer
+     * le prochain noeud à parcourir ou le noeud de la dernière lettre
+     *
+     * @return Une instance de noeud
+     *
+     */
     public BinaryTree getNode(char element, boolean dernierNoeud) {
         BinaryTree noeud = this;
         if (dernierNoeud == false) {
@@ -136,6 +151,14 @@ public class BinaryTree {
         return noeud;
     }
 
+    /**
+     * Générer Arbre
+     *
+     * @param mots Un tableau d' objet Mot
+     *
+     * @return Une instance d'arbre des mots passés en paramètre
+     *
+     */
     public void genererArbre(Mot[] mots) {
 
         // HEAD TEMP PERMET DE SAUVEGARDER LE NOEUD DE L'ARBRE  SUR LEQUEL ON EST
@@ -178,6 +201,15 @@ public class BinaryTree {
         }
     }
 
+    /**
+     * Split un fichier
+     *
+     * @param fichier La fichier à spliter
+     * @param pathern Le pathern à utiliser pour split le fichier
+     *
+     * @return un lexique de mots que compose le fichier
+     *
+     */
     public void splitFichier(BufferedReader fichier, String pathern) throws IOException {
 
         String line;
@@ -195,6 +227,13 @@ public class BinaryTree {
         BinaryTree.setLexique(lexiqueTable);
     }
 
+    /**
+     * Permet de générer le lexique
+     *
+     * @param fichier La fichier à spliter
+     * @param pathern Le pathern à utiliser pour split le fichier
+     *
+     */
     public String[] generateTable(String fichier, boolean choice) {
         String texte = " ";
         try {
@@ -216,6 +255,13 @@ public class BinaryTree {
         return null;
     }
 
+    /**
+     * Permet de split le texte
+     *
+     * @param fichier La fichier à spliter
+     *
+     * @return L'ensemble des objets Mots du texte
+     */
     public String[] splitTexte(BufferedReader fichier) throws IOException {
         String[] mots = null;
         String line = " ";
@@ -238,6 +284,15 @@ public class BinaryTree {
         return mots;
     }
 
+    /**
+     * Permet de parcourir l'arbre
+     *
+     * @param lettre La lettre à trouver
+     * @param finMot Informer la fonction si l'on est sur la dernière lettre
+     *
+     * @return Une instance de noeud
+     *
+     */
     public BinaryTree parcourirAbre(char lettre, boolean finMot) {
         BinaryTree noeud = this;
         if (finMot == false) {
@@ -269,13 +324,24 @@ public class BinaryTree {
         return noeud;
     }
 
+    /**
+     * Compter les mots dans le texte
+     *
+     * @param text Le texte où l'on veut compter les mots
+     *
+     * @return Un hashmap des mots et dd nombres de fois qu'ils apparaissent
+     */
     public Map<Integer, Integer> compterMot(String[] text) {
         Map<Integer, Integer> nbTokens = new HashMap<Integer, Integer>();
         BinaryTree noeud = null;
+
         int token = -2;
         int a = 0;
+        boolean rechercheFrutueuse = false;
         //Pour chaque mot du texte
+
         for (int i = 0; i < text.length; i++) {
+
             noeud = BinaryTree.getRacine();
 
             char[] lettres = text[i].toCharArray();
@@ -283,11 +349,23 @@ public class BinaryTree {
             // Pour chaque lettres du mot du texte
             for (int j = 0; j < lettres.length; j++) {
 
-                // dernier appel
+                // dernier appel : fin du mot
                 if (j + 1 == lettres.length) {
                     noeud = noeud.parcourirAbre(lettres[j], true);
-                   
-                } else {
+                    //if (noeud.getRight().getElement() == '_') {
+                    //Appel pour chercher les mots composés : ne fonctionne pas 
+                        /* noeud = noeud.verifierMotCompose(text, i + 1);
+                        
+                     if(noeud != null){
+                     token = noeud.getWeight();
+                     i = BinaryTree.getIndiceText();
+                     }*/
+                    //}
+                } // si on est pas a la fin du mot
+                else {
+                    if (noeud.getElement() == ' ') {
+                        break;
+                    }
                     noeud = noeud.parcourirAbre(lettres[j], false);
                     //Si le mot n'existe pas
                     if (noeud == null) {
@@ -295,35 +373,69 @@ public class BinaryTree {
                     }
                 }
             }
-            if (token == -2) {
+            if (token != -2) {
                 nbTokens = compteurToken(noeud, nbTokens);
+                token = -2;
             } else {
-                i = a;
-                noeud.setWeight(token);
                 nbTokens = compteurToken(noeud, nbTokens);
             }
         }
         return nbTokens;
     }
 
-    public BinaryTree verifierMotComposer(char[] lettres, BinaryTree noeud, int token) {
-        for (int j = 0; j < lettres.length; j++) {
-            if (j + 1 == lettres.length) {
-                noeud = noeud.parcourirAbre(lettres[j], true);
-                if (noeud == null) {
-                    break;
-                }
-            } else {
-                noeud = noeud.parcourirAbre(lettres[j], false);
-                //Si le mot n'existe pas
-                if (noeud == null) {
-                    break;
+    /**
+     * Permet de regarder si un mot est un mot composé
+     *
+     * @param text Le texte
+     * @param indiceText L'indice du mot dans le texte
+     *
+     * @return Une instance de noeud et l'indice du text sur lequel on se trouve
+     */
+    public BinaryTree verifierMotCompose(String[] text, int indiceText) {
+        BinaryTree noeud = this;
+        boolean parcourir = true;
+        int i = indiceText;
+        BinaryTree saveNoeud = null;
+
+        while (parcourir) {
+            char[] lettres = text[i].toCharArray();
+
+            for (int j = 0; j < lettres.length; j++) {
+                if (j + 1 == lettres.length) {
+                    noeud = noeud.parcourirAbre(lettres[j], true);
+                    if (noeud == null) {
+                        parcourir = false;
+                        break;
+                    }
+                    if (noeud.getRight().getElement() == '_' && noeud.getWeight() == -1) {
+
+                        noeud = verifierMotCompose(text, i++);
+                    } else if (noeud.getRight().getElement() == '_' && noeud.getWeight() > -1) {
+                        saveNoeud = noeud;
+                        BinaryTree.setIndiceText(i);;
+                        noeud = verifierMotCompose(text, i++);
+                    }
+                } else {
+                    noeud = noeud.parcourirAbre(lettres[j], false);
+                    //Si le mot n'existe pas
+                    if (noeud == null) {
+                        parcourir = false;
+                        break;
+                    }
                 }
             }
         }
-        return noeud;
+        return saveNoeud;
     }
 
+    /**
+     * Permet de compter les mots à l'aide de token
+     *
+     * @param noeud Une instance de noeud
+     * @param nbTokens Une map de sauvegarde
+     * 
+     * @return Une instance de Map
+     */
     public Map<Integer, Integer> compteurToken(BinaryTree noeud, Map<Integer, Integer> nbTokens) {
 
         if (noeud != null) {
@@ -371,7 +483,7 @@ public class BinaryTree {
         String[] textTable = binaryTree.generateTable(texte, false);
 
         Map<Integer, Integer> nbTokens = binaryTree.compterMot(textTable);
-        System.out.println(nbTokens.get(-1));
+        System.out.println(nbTokens.get(56384));
 
         //System.out.println(BinaryTree.getLexique()[0].getMot());
         //System.out.println("");
