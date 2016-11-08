@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import static java.lang.Math.log;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.StringTokenizer;
@@ -95,11 +96,13 @@ public class Gram {
     }
 
     public void displayHashMapDouble(Map<String, Double> map) {
+        System.out.println("Affichage Map : ");
         for (Entry<String, Double> entry : map.entrySet()) {
             String cle = entry.getKey();
             Double valeur = entry.getValue();
             System.out.println(cle + " " + valeur);
         }
+        System.out.println("Fin affichage");
     }
 
     public String parseTableStringToString(String[] tokens) {
@@ -120,36 +123,45 @@ public class Gram {
         int taille = 0;
         String[] strTok = null;
         int a = 0;
-        boolean find = false;
+        boolean find = true;
 
-        System.out.println("Get tokens");
+        System.out.println("Générer séquences");
         if (n > 1) {
-            taille = tokens.length - (gram.searchGram("F", tokens) * 2);
-
+            taille = tokens.length - 3;
             strTok = new String[taille];
-            for (int i = 0; i < tokens.length; i = i + 1) {
+            for (int i = 0; i < tokens.length; i++) {
+                // Si le premier token de la séquence
+                if (find == true) {
+                    strTok[a] = tokens[i];
+                    find = false;
+                    // on save les indices du tableau des tokens et du tableau de séquence
+                    a++;
+                    i++;
+                }
                 for (int j = 0; j < n; j++) {
-                    if (tokens[i + j].indexOf("F") != -1) {
+                    // si fin de ligne
+                    if (tokens[i].indexOf("F") != -1) {
                         find = true;
                         break;
+                    } else if (j == 0) {
+                        strTok[a] = tokens[i];
                     } else {
-                        if (j == 0) {
-                            strTok[a] = tokens[i + j];
+                        // n > 2 vérifier que on ne cherche pas une case null
+                        if (i - j < 0) {
+                            break;
                         } else {
-                            strTok[a] = strTok[a] + " " + tokens[i + j];
+                            strTok[a] = strTok[a] + " " + tokens[i - j];
                         }
                     }
                 }
                 if (find == true) {
-                    find = false;
                     strTok[a] = null;
                 } else {
-                    System.out.println(" Token : " + strTok[a]);
                     a++;
                 }
             }
         } else {
-            taille = tokens.length - (gram.searchGram("F", tokens));
+            taille = tokens.length - (gram.searchSequence("F", tokens));
             strTok = new String[taille];
             for (int i = 0; i < tokens.length; i++) {
                 if (tokens[i].indexOf("F") == -1) {
@@ -159,36 +171,53 @@ public class Gram {
                 }
             }
         }
-        System.out.println("fin tokens");
+        System.out.println("fin génération");
         return strTok;
 
     }
 
-    public Map<String, Integer> getNGram(int n, String[] tokens) {
+    public LinkedHashMap<String, Integer> getNGram(int n, String[] tokens) {
         Gram gram;
 
-        Map<String, Integer> nbGram = new HashMap<String, Integer>();
-
+        LinkedHashMap<String, Integer> nbGram = new LinkedHashMap<String, Integer>();
         try {
             gram = new Gram();
             String[] t = gram.getGram(tokens, n);
 
-            System.out.println("\nTokenisation : in map");
-
+            System.out.println("\nSéquence : in LinkedHashMap");
             for (int i = 0; i < t.length; i++) {
-                System.out.println(t[i]);
                 if (t[i] != null) {
-                    if (nbGram.containsKey(t[i])) {
-                        nbGram.put(t[i], nbGram.get(t[i]) + 1);
+                    // on met la séquence dans l'odre pour calculer les probabilités
+                    String seq = t[i];
+
+                    // pour les séquences qui ne sont pas de longueur N de début de chaine
+                    if (seq.split(" ").length < n) {
+                        if (nbGram.containsKey(seq) != true) {
+                            // on inverse l'odre pour la recherche
+                            String nb[] = seq.split(" ");
+                            String seqInv = "";
+                            for (int j = nb.length - 1; j >= 0; j--) {
+                                if (nb.length - 1 == j) {
+                                    seqInv = nb[j];
+                                } else {
+                                    seqInv = seqInv + " " + nb[j];
+                                }
+                            }
+                            nbGram.put(seq, gram.searchSequence(seqInv, tokens));
+                        }
                     } else {
-                        nbGram.put(t[i], 1);
+                        if (nbGram.containsKey(seq)) {
+                            nbGram.put(seq, nbGram.get(seq) + 1);
+                        } else {
+                            nbGram.put(seq, 1);
+                        }
                     }
                 }
             }
-            System.out.println("Fin Tokenisation : in map\n");
+            System.out.println("Fin in LinkedHashMap : in map\n");
 
         } catch (Exception e) {
-            System.out.println("Le dernier n-couple n'est pas de taille " + n);
+            System.out.println(e + " " + n);
         }
 
         return nbGram;
@@ -222,9 +251,9 @@ public class Gram {
         return content;
     }
 
-    public Map<String, Integer> parseStringToMap(String contenu) {
+    public LinkedHashMap<String, Integer> parseStringToMap(String contenu) {
 
-        Map<String, Integer> map = new HashMap<String, Integer>();
+        LinkedHashMap<String, Integer> map = new LinkedHashMap<String, Integer>();
         String[] splited = null;
         String[][] endSplited = null;
         String result = "";
@@ -247,31 +276,46 @@ public class Gram {
         return map;
     }
 
-    public Map<String, Double> maximumVraissemblance(Map<String, Integer> map, String[] tokens, int n) {
-        int count = 0;
+    public LinkedHashMap<String, Double> maximumVraissemblance(LinkedHashMap<String, Integer> map, String[] tokens, int n) {
         Gram gram = new Gram();
-        Map<String, Integer> nGram = new HashMap<String, Integer>();
 
-        Map<String, Double> mapProb = new HashMap<String, Double>();
+        LinkedHashMap<String, Double> mapProb = new LinkedHashMap<String, Double>();
 
         if (n > 1) {
             for (Entry<String, Integer> entrySet : map.entrySet()) {
 
                 int a = entrySet.getValue();
                 String result = "";
-                String[] t = entrySet.getKey().split(" ");
+                String[] t;
 
-                for (int j = 0; j < t.length - 1; j++) {
-                    result = result + t[j];
+                if (entrySet.getKey().split(" ").length == 2) {
+                    t = new String[1];
+                    t[0] = entrySet.getKey();
+                } else {
+                    t = entrySet.getKey().split(" ");
+                    for (int j = 0; j < t.length - 1; j++) {
+                        result = result + t[j];
+                    }
                 }
-                int b = gram.searchGram(" " + result + " ", tokens);
+                double b = 0;
 
+                if (t.length == 1) {
+                    b = gram.searchSequence(t[0].trim(), tokens);
+                    // nombre de tokens
+                    double N = 0;
+                    for (Entry<String, Integer> entrySet1 : map.entrySet()) {
+                        N = N + entrySet1.getValue();
+                    }
+                    b = N;
+                } else {
+                    b = gram.searchSequence(" " + result + " ", tokens);
+                }
                 double r = (double) a / (double) b;
 
                 mapProb.put(entrySet.getKey(), r);
             }
         } else {
-            int t = (tokens.length - gram.searchGram("F", tokens) - 1);
+            int t = (tokens.length - gram.searchSequence("F", tokens) - 1);
             for (Entry<String, Integer> entrySet : map.entrySet()) {
                 int a = entrySet.getValue();
                 double b = (double) a / (double) t;
@@ -283,7 +327,7 @@ public class Gram {
         return mapProb;
     }
 
-    public int searchGram(String gramStr, String[] t) {
+    public int searchSequence(String gramStr, String[] t) {
         Gram gram = new Gram();
         String str = "";
         str = gram.parseTableStringToString(t);
@@ -292,45 +336,18 @@ public class Gram {
         return ts.length - 1;
     }
 
-    public Double probabilitySequence(Map<String, Double> map, String[] t, int n) {
-        Double prob = 0.0;
-        Double prob1 = 1.0;
-
-        int compteur = 1;
-        Gram gram = new Gram();
-        int a;
-        int nb;
-        String sequence = "";
-        // prob de p(w1)   
-        for (int i = 0; i < n; i++) {
-            if (i == 0) {
-                sequence = sequence + t[i];
-
-            } else {
-                sequence = sequence + " " + t[i];
+    public Double probabilitySequence(LinkedHashMap<String, Double> mapProb,LinkedHashMap<String, Integer> mapAppartion) {
+        double prob = 0;
+        
+        // pw(1)
+        for (Entry<String, Integer> entrySet : mapAppartion.entrySet()) {
+            String key = entrySet.getKey();
+            Integer value = entrySet.getValue();
+            double probKey = (double)mapProb.get(key);
+            for (int i = 0; i < value; i++) {
+                prob = prob -log(probKey);
             }
-        }
-        nb = gram.searchGram(sequence, t);
-        a = (t.length - gram.searchGram("F", t) - 1);
-
-        prob1 = (double) nb / (double) a;
-        // Double pw1 = -log();
-        for (Entry<String, Double> entrySet : map.entrySet()) {
-            // on saute le premier tour 
-            System.out.println("prof d " + prob);
-            if (compteur < 2) {
-                compteur++;
-            } else {
-                Double value = entrySet.getValue();
-                if (prob == 0.0) {
-                    prob = - log(value);
-                } else {
-                    prob = -log(prob) - log(value);
-                }
-                System.out.println("V " + value);
-                System.out.println("log " + -log(value));
-                System.out.println("prob " + prob);
-            }
+            
         }
         return prob;
     }
@@ -342,9 +359,8 @@ public class Gram {
         BufferedReader buff = null;
         String strFile = "";
         String[] tokens = null;
-        Map<String, Integer> nGram = null;
-        Map<String, Double> nGramProb = null;
-
+        LinkedHashMap<String, Integer> nGram = null;
+        LinkedHashMap<String, Double> nGramProb = null;
         String content = "";
 
         final int N = 2;
@@ -363,8 +379,6 @@ public class Gram {
 
         nGram = gram.getNGram(N, tokens);
 
-        gram.displayHashMap(nGram);
-
         content = gram.parseMapToString(nGram);
 
         // on écrit le compte dans un fichier
@@ -376,11 +390,17 @@ public class Gram {
 
         nGram = gram.parseStringToMap(strFile);
 
+        System.out.println("Nombre de fois qu' aparait le mot");
+
         gram.displayHashMap(nGram);
 
         nGramProb = gram.maximumVraissemblance(nGram, tokens, N);
 
-        Double probSeqence = gram.probabilitySequence(nGramProb, tokens, N);
+        System.out.println("Estimation du n-gram");
+
+        gram.displayHashMapDouble(nGramProb);
+
+        Double probSeqence = gram.probabilitySequence(nGramProb, nGram);
 
         System.out.println("PROB");
         //gram.displayHashMapDouble(nGramProb);
