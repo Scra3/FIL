@@ -213,13 +213,21 @@ public class GramVF {
                 }
             }
             if (find == false) {
-                prob[indice] = (double)alphaLaplace / nombreMotsCorpus * alphaLaplace;
-            }else{
+                prob[indice] = (double) alphaLaplace / nombreMotsCorpus * alphaLaplace;
+            } else {
                 find = false;
             }
             indice++;
         }
         return prob;
+    }
+
+    private double logProb(double[] prob) {
+        double plog = 0.0;
+        for (int i = 0; i < prob.length; i++) {
+            plog = plog - Math.log(prob[i]);
+        }
+        return plog;
     }
 
     public static void main(String[] args) throws IOException {
@@ -248,6 +256,10 @@ public class GramVF {
             System.out.println(prob[i]);
         }
 
+        double plog = gram.logProb(prob);
+        double cal = (1/(double)N) * plog;
+        double plogEvaluation = Math.pow(2, cal);
+        System.out.println(plogEvaluation);
     }
 
 }
