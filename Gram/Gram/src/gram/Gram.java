@@ -276,51 +276,16 @@ public class Gram {
         return map;
     }
 
-    public LinkedHashMap<String, Double> maximumVraissemblance(LinkedHashMap<String, Integer> map, String[] tokens, int n) {
+    public Double maximumVraissemblance(Map<String, Integer> corpus, String[] sequenceTokenise, int n) {
         Gram gram = new Gram();
+        // Est la probabilité de la séquence
+        Double mapProb = 0.0;
 
-        LinkedHashMap<String, Double> mapProb = new LinkedHashMap<String, Double>();
-
-        if (n > 1) {
-            for (Entry<String, Integer> entrySet : map.entrySet()) {
-
-                int a = entrySet.getValue();
-                String result = "";
-                String[] t;
-
-                if (entrySet.getKey().split(" ").length == 2) {
-                    t = new String[1];
-                    t[0] = entrySet.getKey();
-                } else {
-                    t = entrySet.getKey().split(" ");
-                    for (int j = 0; j < t.length - 1; j++) {
-                        result = result + t[j];
-                    }
-                }
-                double b = 0;
-
-                if (t.length == 1) {
-                    b = gram.searchSequence(t[0].trim(), tokens);
-                    // nombre de tokens
-                    double N = 0;
-                    for (Entry<String, Integer> entrySet1 : map.entrySet()) {
-                        N = N + entrySet1.getValue();
-                    }
-                    b = N;
-                } else {
-                    b = gram.searchSequence(" " + result + " ", tokens);
-                }
-                double r = (double) a / (double) b;
-
-                mapProb.put(entrySet.getKey(), r);
-            }
-        } else {
-            int t = (tokens.length - gram.searchSequence("F", tokens) - 1);
-            for (Entry<String, Integer> entrySet : map.entrySet()) {
-                int a = entrySet.getValue();
-                double b = (double) a / (double) t;
-                mapProb.put(entrySet.getKey(), b);
-            }
+        //on get la séquence au format gram
+        sequenceTokenise = gram.getGram(sequenceTokenise, n);
+        //gram.displayTable(sequenceTokenise);
+        // on parcour la séquence au format n-gram
+        for (int i = 0; i < sequenceTokenise.length; i++) {
         }
 
         // we need to calculate C2
@@ -336,18 +301,18 @@ public class Gram {
         return ts.length - 1;
     }
 
-    public Double probabilitySequence(LinkedHashMap<String, Double> mapProb,LinkedHashMap<String, Integer> mapAppartion) {
+    public Double probabilitySequence(LinkedHashMap<String, Double> mapProb, LinkedHashMap<String, Integer> mapAppartion) {
         double prob = 0;
-        
+
         // pw(1)
         for (Entry<String, Integer> entrySet : mapAppartion.entrySet()) {
             String key = entrySet.getKey();
             Integer value = entrySet.getValue();
-            double probKey = (double)mapProb.get(key);
+            double probKey = (double) mapProb.get(key);
             for (int i = 0; i < value; i++) {
-                prob = prob -log(probKey);
+                prob = prob - log(probKey);
             }
-            
+
         }
         return prob;
     }
@@ -362,6 +327,8 @@ public class Gram {
         LinkedHashMap<String, Integer> nGram = null;
         LinkedHashMap<String, Double> nGramProb = null;
         String content = "";
+
+        String[] phrases = {"1054", "7815", "1054", "831"};
 
         final int N = 2;
 
@@ -390,23 +357,23 @@ public class Gram {
 
         nGram = gram.parseStringToMap(strFile);
 
-        System.out.println("Nombre de fois qu' aparait le mot");
+        System.out.println("Nombre de fois qu' aparait les qéquences dans le corpus");
 
         gram.displayHashMap(nGram);
 
-        nGramProb = gram.maximumVraissemblance(nGram, tokens, N);
+        gram.maximumVraissemblance(nGram, phrases, N);
 
         System.out.println("Estimation du n-gram");
 
         gram.displayHashMapDouble(nGramProb);
+        /*
+         Double probSeqence = gram.probabilitySequence(nGramProb, nGram);
 
-        Double probSeqence = gram.probabilitySequence(nGramProb, nGram);
+         System.out.println("PROB");
+         //gram.displayHashMapDouble(nGramProb);
+         System.out.println("FINPROB");
 
-        System.out.println("PROB");
-        //gram.displayHashMapDouble(nGramProb);
-        System.out.println("FINPROB");
-
-        System.out.println(probSeqence);
+         System.out.println(probSeqence);*/
     }
 
 }
