@@ -133,10 +133,10 @@ public class GramVF {
         // Pour chaque ligne
         for (int i = 0; i < lignes.length; i++) {
             String[] modele = gram.getModele(lignes[i], N);
+
             // pour chaque modele de chaque lignes
             for (int j = 0; j < modele.length; j++) {
                 // on vérifie si le modele existe déja
-
                 if (map.containsKey(modele[j])) {
                     map.put(modele[j], map.get(modele[j]) + 1);
                 } else {
@@ -171,54 +171,43 @@ public class GramVF {
         return count;
     }
 
-    private double[] maximumVraissemblanceLissageLaplace(String texte, String[] lignes, HashMap<String, Integer> pair, int N) {
+    private double maximumVraissemblanceLissageLaplace(String texte, String[] lignes, HashMap<String, Integer> pair, int N) {
         GramVF gram = new GramVF();
         final double alphaLaplace = 1;
         double nombreMotsCorpus;
         double a, b;
-        double[] prob = null;
-        boolean find = false;
-        int indice = 0;
-
+        double prob = 0.0;
+        double P;
         // on compte le nombre de mot du corpus 
         nombreMotsCorpus = gram.countAll(lignes);
-        // on compte le nombre de tokens
+        // on met au format n-gram 
         String Ttexte[] = gram.getModele(texte, N);
-        prob = new double[Ttexte.length];
+
         // texte modele par modele
         for (int i = 0; i < Ttexte.length; i++) {
             // on cherche un modele semblable
-            Set cles = pair.keySet();
-            Iterator it = cles.iterator();
-            while (it.hasNext()) {
-                String cle = (String) it.next();
 
-                if (cle.equals(Ttexte[i])) {
+            if (pair.containsKey(Ttexte[i])) {
 
-                    if (cle.split(" ").length <= N - 1) {
-                        b = gram.countAll(lignes);
-                        a = pair.get(cle);
-                        //System.out.println("premier " + mod);
+                if (Ttexte[i].split(" ").length <= N - 1) {
+                    b = (double) gram.countAll(lignes);
+                    a = (double) pair.get(Ttexte[i]);
+                    //System.out.println("premier " + mod);
 
-                    } else {
-                        String wmoins1 = cle.split(" ")[0];
-                        //System.out.println("second " + wmoins1);
+                } else {
+                    String wmoins1 = Ttexte[i].split(" ")[0];
+                    //System.out.println("second " + wmoins1);
 
-                        b = gram.count(lignes, wmoins1);
-                        a = pair.get(cle);
-                    }
-                    double P = (a + alphaLaplace) / (b + nombreMotsCorpus * alphaLaplace);
-                    prob[indice] = P;
-                    find = true;
-                    break;
+                    b = (double) gram.count(lignes, wmoins1);
+                    a = (double) pair.get(Ttexte[i]);
                 }
-            }
-            if (find == false) {
-                prob[indice] = (double) alphaLaplace / (nombreMotsCorpus * alphaLaplace);
+                P = -Math.log((a + alphaLaplace) / (b + nombreMotsCorpus * alphaLaplace));
+
             } else {
-                find = false;
+                P = -Math.log(alphaLaplace / (nombreMotsCorpus * alphaLaplace));
             }
-            indice++;
+            
+            prob = prob + P;
         }
         return prob;
     }
@@ -231,6 +220,17 @@ public class GramVF {
         return plog;
     }
 
+    private double perplexite(double prob, String texte) {
+        GramVF gram = new GramVF();
+        String[] texteTable = new String[1];
+        texteTable[0] = texte;
+        double nombresMots = gram.countAll(texteTable);
+        double cal = (1 / (double) nombresMots) * prob;
+        double plogEvaluation = Math.pow(2, cal);
+        return plogEvaluation;
+
+    }
+
     public static void main(String[] args) throws IOException {
 
         BufferedReader buff = null;
@@ -240,7 +240,7 @@ public class GramVF {
         final int N = 2; // correspond au model N-gram
         String strFile = "";
         String[] modele = null;
-        String texte = "5831 1054 4554";
+        String texte = "60579 66661 43372 87333";
 
         // On récupère le contenu du fichier
         buff = gram.getBufferedReader(input);
@@ -250,15 +250,10 @@ public class GramVF {
         String[] lignes = gram.wrapLine(strFile);
         HashMap<String, Integer> pair = gram.getModeles(lignes, N);
 
-        double[] prob = gram.maximumVraissemblanceLissageLaplace(texte, lignes, pair, N);
+        // calcul de la perplexité
+        double prob = gram.maximumVraissemblanceLissageLaplace(texte, lignes, pair, N);
 
-        double plog = gram.logProb(prob);
-        double nombresMots = gram.countAll(lignes);
-        double cal = (1 / (double) nombresMots) * plog;
-        System.out.println(cal);
-        double plogEvaluation = Math.pow(2, cal);
-
+        double plogEvaluation = gram.perplexite(prob, texte);
         System.out.println(plogEvaluation);
     }
-
 }

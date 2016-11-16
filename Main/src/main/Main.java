@@ -45,7 +45,6 @@ public class Main {
         while (it.hasNext()){
             Object cle = it.next();
                 System.out.println("clef : "+cle+"\tmot : "+tokenCoupleHashMap.get(cle));
-
         }
     }
 
