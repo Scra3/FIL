@@ -10,6 +10,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -23,6 +24,8 @@ import java.util.Set;
  * @author scra
  */
 public class GramVF {
+
+    private static Object config;
 
     // Afficher une list de Pair
     private void displayList(List l) {
@@ -191,9 +194,9 @@ public class GramVF {
 
                 if (Ttexte[i].split(" ").length <= N - 1) {
                     b = (double) gram.countAll(lignes);
-                    a = (double) pair.get(Ttexte[i]);
-                    //System.out.println("premier " + mod);
+                    a = (double) gram.count(lignes, Ttexte[i]);
 
+                    //System.out.println("premier " + mod);
                 } else {
                     String wmoins1 = Ttexte[i].split(" ")[0];
                     //System.out.println("second " + wmoins1);
@@ -201,12 +204,14 @@ public class GramVF {
                     b = (double) gram.count(lignes, wmoins1);
                     a = (double) pair.get(Ttexte[i]);
                 }
+
+                // si la séquence existe dans le corpus
                 P = -Math.log((a + alphaLaplace) / (b + nombreMotsCorpus * alphaLaplace));
 
             } else {
+                // si la séquence n'existe pas dans le corpus
                 P = -Math.log(alphaLaplace / (nombreMotsCorpus * alphaLaplace));
             }
-            
             prob = prob + P;
         }
         return prob;
@@ -220,15 +225,39 @@ public class GramVF {
         return plog;
     }
 
-    private double perplexite(double prob, String texte) {
+    private double perplexite(double prob, String texte, String[] corpus) {
         GramVF gram = new GramVF();
         String[] texteTable = new String[1];
         texteTable[0] = texte;
-        double nombresMots = gram.countAll(texteTable);
+        double nombresMots = gram.countAll(corpus);
         double cal = (1 / (double) nombresMots) * prob;
         double plogEvaluation = Math.pow(2, cal);
         return plogEvaluation;
 
+    }
+
+    public HashMap<String, Double> anagramma(String T[], int first, HashMap<String, Double> save) {
+        if ((T.length - first) <= 1) {
+            String saveStr = T[0];
+            for (int i = 1; i < T.length; i++) {
+                saveStr = saveStr + " " + T[i];
+            }
+            save.put(saveStr, 0.0);
+        } else {
+            for (int i = 0; i < T.length - first; i++) {
+                round(T, first);
+                save = anagramma(T, first + 1, save);
+            }
+        }
+        return save;
+    }
+
+    private void round(String T[], int i) {
+        String temp = T[i];
+        for (int j = i; j < T.length - 1; j++) {
+            T[j] = T[j + 1];
+        }
+        T[T.length - 1] = temp;
     }
 
     public static void main(String[] args) throws IOException {
@@ -240,7 +269,7 @@ public class GramVF {
         final int N = 2; // correspond au model N-gram
         String strFile = "";
         String[] modele = null;
-        String texte = "60579 66661 43372 87333";
+        String texte = "56384 10276 28930 87086 47758"; // TEXTE À METTRE DANS L'ORDRE
 
         // On récupère le contenu du fichier
         buff = gram.getBufferedReader(input);
@@ -250,10 +279,35 @@ public class GramVF {
         String[] lignes = gram.wrapLine(strFile);
         HashMap<String, Integer> pair = gram.getModeles(lignes, N);
 
+        // Permutations de la phrases 
         // calcul de la perplexité
-        double prob = gram.maximumVraissemblanceLissageLaplace(texte, lignes, pair, N);
+        String[] Ttexte = texte.split(" ");
+        HashMap<String, Double> textePermute = new HashMap<String, Double>();
 
-        double plogEvaluation = gram.perplexite(prob, texte);
-        System.out.println(plogEvaluation);
+        // on cherche toute les permutations possible
+        textePermute = gram.anagramma(Ttexte, 0, textePermute);
+
+        /*On calcul la perplexité pour chaque permutation*/
+        Set cles = textePermute.keySet();
+        Iterator it = cles.iterator();
+        while (it.hasNext()) {
+            texte = (String) it.next();
+            double prob = gram.maximumVraissemblanceLissageLaplace(texte, lignes, pair, N);
+            double plogEvaluation = gram.perplexite(prob, texte, lignes);
+            textePermute.put(texte, plogEvaluation);
+        }
+
+        //on chercher la perplexité la plus faible
+        double valueSave = 1000000000; // permet d'initialise la premiere valeur
+        String texteEnOrdre = "";
+        for (String mapKey : textePermute.keySet()) {
+            double value = textePermute.get(mapKey);
+            if (value <= valueSave) {
+                valueSave = value;
+                texteEnOrdre = mapKey;
+            }
+        }
+        System.out.println("Voici les tokens dans le bon ordre : ");
+        System.out.println(texteEnOrdre);
     }
 }
