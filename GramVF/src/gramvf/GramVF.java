@@ -1,12 +1,9 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package gramvf;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -17,7 +14,7 @@ import java.util.Map;
 
 /**
  *
- * @author scra
+ * @author alban and david
  */
 public class GramVF {
 
@@ -34,6 +31,26 @@ public class GramVF {
     private void displayTable(String[] tableau) {
         for (String tableau1 : tableau) {
             System.out.println(tableau1);
+        }
+    }
+
+    private void writeFile(String file, String text) {
+        FileWriter fichierw = null;
+        try {
+            File fichier = new File(file); // définir l'arborescence
+            fichier.createNewFile();
+            fichierw = new FileWriter(fichier);
+            fichierw.write(text);  // écrire une ligne dans le fichier resultat.txt
+        } catch (IOException e) {
+            System.out.println(e);
+        } finally {
+            if (fichierw != null) {
+                try {
+                    fichierw.close(); // fermer le fichier à la fin des traitements
+                } catch (IOException e) {
+                    System.out.println(e);
+                }
+            }
         }
     }
 
@@ -186,9 +203,10 @@ public class GramVF {
         double[] prob = null;
         boolean find = false;
         int indice = 0;
+
         // on compte le nombre de mot du corpus 
         nombreMotsCorpus = gram.countAll(lignes);
-        // on compte le nombre de tokens
+
         String Ttexte[] = gram.getModele(texte, N);
         prob = new double[Ttexte.length];
         for (int i = 0; i < Ttexte.length; i++) {
@@ -198,15 +216,19 @@ public class GramVF {
                 Pair value = (Pair) pair.get(i);
                 String mod = value.getModele();
                 if (mod.equals(Ttexte[i])) {
+                    // si modele est inférieur à N
                     if (mod.split(" ").length <= N - 1) {
                         b = gram.countAll(lignes);
                         a = value.getCompteur();
                     } else {
+                        // si c'est un modele N-gram
+                        // élément de gauche car indice 0
                         String wmoins1 = mod.split(" ")[0];
+                        // retourne le le nombre de fois qu'on trouve wmoins1 dans le corpus 
                         b = gram.count(lignes, wmoins1.trim());
                         a = value.getCompteur();
                     }
-                    double P = (a + alphaLaplace) / (b + nombreMotsCorpus * alphaLaplace);
+                    double P = (a + alphaLaplace) / (b + (nombreMotsCorpus * alphaLaplace));
                     prob[indice] = P;
                     find = true;
                     break;
@@ -223,10 +245,13 @@ public class GramVF {
     }
 
     private double logProb(double[] prob) {
-        double plog = 0.0;
-        for (int i = 0; i < prob.length; i++) {
+        // w1
+        double plog = prob[0];
+        // w2 .. wn
+        for (int i = 1; i < prob.length; i++) {
             plog = plog - Math.log(prob[i]);
         }
+        // Plog(W)
         return plog;
     }
 
@@ -234,32 +259,56 @@ public class GramVF {
 
         BufferedReader buff = null;
         GramVF gram = new GramVF();
+
         final String input = "src/gramvf/tokens.txt";
         final String compteFile = "src/gramvf/compte.txt";
         final int N = 2; // pour 3 , 4 etc ca ne marche pas il faut termine d'implémenter certaines fonctionnalités
-        String strFile = "";
-        String[] modele = null;
-        String texte = "1054 7815 4238 9297 6283";
 
-        // On récupère le contenu du fichier
-        buff = gram.getBufferedReader(input);
-        strFile = gram.readFile(buff);
+        if (args.length == 0) {
+            String[] texte = new String[1];
+            texte[0] = "texteTest.txt"; // texte à mettre en ordre
+            String cheminCorpus = "texteToken.txt"; // nom du fichier
+            String strFile = "";
+            String corpus = "";
+            String[] modele = null;
 
-        // On génère les n-grams
-        String[] lignes = gram.wrapLine(strFile);
-        List pair = gram.getModeles(lignes, N);
+            //on récupère le texte
+            buff = gram.getBufferedReader("src/gramvf/" + texte[0]);
+            texte[0] = gram.readFile(buff);
+            // on récupère le coprus train pour l'écrire dans le fichier tokens
+            // On récupère le contenu du fichier
+            buff = gram.getBufferedReader("src/gramvf/" + cheminCorpus);
+            corpus = gram.readFile(buff);
 
-        double[] prob = gram.maximumVraissemblanceLissageLaplace(texte, lignes, pair, N);
+            // on écrite dans tokens
+            gram.writeFile(input, corpus);
 
-        gram.displayList(pair);
-        for (int i = 0; i < prob.length; i++) {
-            System.out.println(prob[i]);
+            // On récupère le contenu du fichier
+            buff = gram.getBufferedReader(input);
+            strFile = gram.readFile(buff);
+
+            // On génère les n-grams
+            String[] lignes = gram.wrapLine(strFile);
+            
+            List pair = gram.getModeles(lignes, N);
+
+            double[] prob = gram.maximumVraissemblanceLissageLaplace(texte[0], lignes, pair, N);
+
+            //gram.displayList(pair);
+            
+            /* for (int i = 0; i < prob.length; i++) {
+             System.out.println(prob[i]);
+             }*/
+            double nbMots = gram.countAll(texte);
+            // log
+            double plog = gram.logProb(prob);
+
+            double cal = (1 / (double) nbMots) * plog;
+            double plogEvaluation = Math.pow(2, cal);
+            //System.out.println(plogEvaluation);
+        } else {
+            System.err.println("Aucun arguments");
         }
-
-        double plog = gram.logProb(prob);
-        double cal = (1/(double)N) * plog;
-        double plogEvaluation = Math.pow(2, cal);
-        System.out.println(plogEvaluation);
     }
 
 }
