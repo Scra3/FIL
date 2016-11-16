@@ -10,10 +10,13 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  *
@@ -121,11 +124,11 @@ public class GramVF {
     }
 
     // Retourner l'ensemble des modele du corpus avec leurs nombres de fois qu'il apparait
-    private List getModeles(String[] lignes, int N) {
+    private HashMap<String, Integer> getModeles(String[] lignes, int N) {
         GramVF gram = new GramVF();
         boolean find = false;
         int tailleModeles = 0;
-        List modeles = new LinkedList();
+        HashMap<String, Integer> map = new HashMap<String, Integer>();
 
         // Pour chaque ligne
         for (int i = 0; i < lignes.length; i++) {
@@ -133,27 +136,17 @@ public class GramVF {
             // pour chaque modele de chaque lignes
             for (int j = 0; j < modele.length; j++) {
                 // on vérifie si le modele existe déja
-                for (int k = 0; k < modeles.size(); k++) {
-                    Pair occurence = (Pair) modeles.get(k);
-                    if (occurence.getModele().equals(modele[j])) {
-                        int n = occurence.getCompteur() + 1;
-                        occurence.setCompteur(n);
-                        find = true;
-                        break;
-                    }
-                }
-                if (find == false) {
-                    // on doit vérifier que le modele soit de la taille de N
-                    Pair occurence = new Pair(modele[j], 1);
-                    modeles.add(occurence);
 
+                if (map.containsKey(modele[j])) {
+                    map.put(modele[j], map.get(modele[j]) + 1);
                 } else {
-                    find = false;
+                    map.put(modele[j], 1);
                 }
+
             }
         }
 
-        return modeles;
+        return map;
     }
 
     private int count(String[] lignes, String modele) {
@@ -178,7 +171,7 @@ public class GramVF {
         return count;
     }
 
-    private double[] maximumVraissemblanceLissageLaplace(String texte, String[] lignes, List pair, int N) {
+    private double[] maximumVraissemblanceLissageLaplace(String texte, String[] lignes, HashMap<String, Integer> pair, int N) {
         GramVF gram = new GramVF();
         final double alphaLaplace = 1;
         double nombreMotsCorpus;
@@ -186,25 +179,33 @@ public class GramVF {
         double[] prob = null;
         boolean find = false;
         int indice = 0;
+
         // on compte le nombre de mot du corpus 
         nombreMotsCorpus = gram.countAll(lignes);
         // on compte le nombre de tokens
         String Ttexte[] = gram.getModele(texte, N);
         prob = new double[Ttexte.length];
+        // texte modele par modele
         for (int i = 0; i < Ttexte.length; i++) {
             // on cherche un modele semblable
-            for (int j = 0; j < pair.size(); j++) {
+            Set cles = pair.keySet();
+            Iterator it = cles.iterator();
+            while (it.hasNext()) {
+                String cle = (String) it.next();
 
-                Pair value = (Pair) pair.get(i);
-                String mod = value.getModele();
-                if (mod.equals(Ttexte[i])) {
-                    if (mod.split(" ").length <= N - 1) {
+                if (cle.equals(Ttexte[i])) {
+
+                    if (cle.split(" ").length <= N - 1) {
                         b = gram.countAll(lignes);
-                        a = value.getCompteur();
+                        a = pair.get(cle);
+                        //System.out.println("premier " + mod);
+
                     } else {
-                        String wmoins1 = mod.split(" ")[0];
-                        b = gram.count(lignes, wmoins1.trim());
-                        a = value.getCompteur();
+                        String wmoins1 = cle.split(" ")[0];
+                        //System.out.println("second " + wmoins1);
+
+                        b = gram.count(lignes, wmoins1);
+                        a = pair.get(cle);
                     }
                     double P = (a + alphaLaplace) / (b + nombreMotsCorpus * alphaLaplace);
                     prob[indice] = P;
@@ -213,7 +214,7 @@ public class GramVF {
                 }
             }
             if (find == false) {
-                prob[indice] = (double) alphaLaplace / nombreMotsCorpus * alphaLaplace;
+                prob[indice] = (double) alphaLaplace / (nombreMotsCorpus * alphaLaplace);
             } else {
                 find = false;
             }
@@ -236,10 +237,10 @@ public class GramVF {
         GramVF gram = new GramVF();
         final String input = "src/gramvf/tokens.txt";
         final String compteFile = "src/gramvf/compte.txt";
-        final int N = 2; // pour 3 , 4 etc ca ne marche pas il faut termine d'implémenter certaines fonctionnalités
+        final int N = 2; // correspond au model N-gram
         String strFile = "";
         String[] modele = null;
-        String texte = "1054 7815 4238 9297 6283";
+        String texte = "5831 1054 4554";
 
         // On récupère le contenu du fichier
         buff = gram.getBufferedReader(input);
@@ -247,18 +248,16 @@ public class GramVF {
 
         // On génère les n-grams
         String[] lignes = gram.wrapLine(strFile);
-        List pair = gram.getModeles(lignes, N);
+        HashMap<String, Integer> pair = gram.getModeles(lignes, N);
 
         double[] prob = gram.maximumVraissemblanceLissageLaplace(texte, lignes, pair, N);
 
-        gram.displayList(pair);
-        for (int i = 0; i < prob.length; i++) {
-            System.out.println(prob[i]);
-        }
-
         double plog = gram.logProb(prob);
-        double cal = (1/(double)N) * plog;
+        double nombresMots = gram.countAll(lignes);
+        double cal = (1 / (double) nombresMots) * plog;
+        System.out.println(cal);
         double plogEvaluation = Math.pow(2, cal);
+
         System.out.println(plogEvaluation);
     }
 
