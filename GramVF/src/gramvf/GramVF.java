@@ -10,6 +10,10 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -18,6 +22,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  *
@@ -62,6 +68,13 @@ public class GramVF {
             }
         }
         return text;
+    }
+
+    // Permet de lire un fichier de le sotcker dans un string
+    static String readFileQuick(String path, Charset encoding)
+            throws IOException {
+        byte[] encoded = Files.readAllBytes(Paths.get(path));
+        return new String(encoded, encoding);
     }
 
     // Charger le fichier dans un buffer
@@ -152,6 +165,8 @@ public class GramVF {
         return map;
     }
 
+    //Compte le nombre de mot par ligne
+
     private int count(String[] lignes, String modele) {
         int count = 0;
         for (int k = 0; k < lignes.length; k++) {
@@ -165,6 +180,18 @@ public class GramVF {
         return count;
     }
 
+    // compter avec les regex
+    private int countWithRegex(String[] lignes, String path) {
+        int occur = 0;
+        for (int i = 0; i < lignes.length; i++) {
+            Matcher matcher = Pattern.compile(path).matcher(lignes[i]);
+            while (matcher.find()) {
+                occur++;
+            }
+        }
+        return occur;
+    }
+
     private int countAll(String[] lignes) {
         int count = 0;
         for (int i = 0; i < lignes.length; i++) {
@@ -174,15 +201,25 @@ public class GramVF {
         return count;
     }
 
-    private double maximumVraissemblanceLissageLaplace(String texte, String[] lignes, HashMap<String, Integer> pair, int N) {
+    // retourner le nombre d'occurence d'un char
+    public int compteurChar(String str, char ch) {
+        int compteur = 0;
+        for (int i = 0; i < str.length(); i++) {
+            if (str.charAt(i) == ch) {
+                compteur++;
+            }
+        }
+        return compteur;
+    }
+
+    // permet d'appliquer la formule de maximum de vraissemblance avec le lissage de laplace
+    private double maximumVraissemblanceLissageLaplace(double nombreMotsCorpus, String texte, String[] lignes, HashMap<String, Integer> pair, int N) {
         GramVF gram = new GramVF();
         final double alphaLaplace = 1;
-        double nombreMotsCorpus;
         double a, b;
         double prob = 0.0;
         double P;
         // on compte le nombre de mot du corpus 
-        nombreMotsCorpus = gram.countAll(lignes);
         // on met au format n-gram 
         String Ttexte[] = gram.getModele(texte, N);
 
@@ -193,15 +230,15 @@ public class GramVF {
             if (pair.containsKey(Ttexte[i])) {
 
                 if (Ttexte[i].split(" ").length <= N - 1) {
-                    b = (double) gram.countAll(lignes);
-                    a = (double) gram.count(lignes, Ttexte[i]);
+                    b = (double) nombreMotsCorpus;
+                    a = (double) gram.countWithRegex(lignes, Pattern.quote(Ttexte[i]));
 
                     //System.out.println("premier " + mod);
                 } else {
                     String wmoins1 = Ttexte[i].split(" ")[0];
                     //System.out.println("second " + wmoins1);
 
-                    b = (double) gram.count(lignes, wmoins1);
+                    b = (double) gram.countWithRegex(lignes, Pattern.quote(wmoins1));
                     a = (double) pair.get(Ttexte[i]);
                 }
 
@@ -217,25 +254,18 @@ public class GramVF {
         return prob;
     }
 
-    private double logProb(double[] prob) {
-        double plog = 0.0;
-        for (int i = 0; i < prob.length; i++) {
-            plog = plog - Math.log(prob[i]);
-        }
-        return plog;
-    }
-
-    private double perplexite(double prob, String texte, String[] corpus) {
+    // calcul la perplexite
+    private double perplexite(double nombresMots, double prob, String texte, String[] corpus) {
         GramVF gram = new GramVF();
         String[] texteTable = new String[1];
         texteTable[0] = texte;
-        double nombresMots = gram.countAll(corpus);
         double cal = (1 / (double) nombresMots) * prob;
         double plogEvaluation = Math.pow(2, cal);
         return plogEvaluation;
 
     }
 
+    // permet de générer toutes les séquences de tokens possible
     public HashMap<String, Double> anagramma(String T[], int first, HashMap<String, Double> save) {
         if ((T.length - first) <= 1) {
             String saveStr = T[0];
@@ -265,15 +295,17 @@ public class GramVF {
         BufferedReader buff = null;
         GramVF gram = new GramVF();
         final String input = "src/gramvf/tokens.txt";
+        final String lexique = "src/gramvf/lexique_np.fr.code";
         final String compteFile = "src/gramvf/compte.txt";
         final int N = 2; // correspond au model N-gram
+        double nombreMotsCorpus; // nombre de tokens du corpus
         String strFile = "";
+        String phrase; // est la traduction des tokens
         String[] modele = null;
-        String texte = "56384 10276 28930 87086 47758"; // TEXTE À METTRE DANS L'ORDRE
+        String texte = "3323 47548 2493 84767 83250";// TEXTE À METTRE DANS L'ORDRE , attention aux espaces
 
         // On récupère le contenu du fichier
-        buff = gram.getBufferedReader(input);
-        strFile = gram.readFile(buff);
+        strFile = gram.readFileQuick(input, StandardCharsets.UTF_8);
 
         // On génère les n-grams
         String[] lignes = gram.wrapLine(strFile);
@@ -290,15 +322,18 @@ public class GramVF {
         /*On calcul la perplexité pour chaque permutation*/
         Set cles = textePermute.keySet();
         Iterator it = cles.iterator();
+        // on compte le nombre de tokens dans le corpus
+        nombreMotsCorpus = gram.countAll(lignes);
+
         while (it.hasNext()) {
             texte = (String) it.next();
-            double prob = gram.maximumVraissemblanceLissageLaplace(texte, lignes, pair, N);
-            double plogEvaluation = gram.perplexite(prob, texte, lignes);
+            double prob = gram.maximumVraissemblanceLissageLaplace(nombreMotsCorpus, texte, lignes, pair, N);
+            double plogEvaluation = gram.perplexite(nombreMotsCorpus, prob, texte, lignes);
             textePermute.put(texte, plogEvaluation);
         }
 
         //on chercher la perplexité la plus faible
-        double valueSave = 1000000000; // permet d'initialise la premiere valeur
+        double valueSave = 1000000000; // permet d'initialiser la premiere valeur
         String texteEnOrdre = "";
         for (String mapKey : textePermute.keySet()) {
             double value = textePermute.get(mapKey);
@@ -309,5 +344,35 @@ public class GramVF {
         }
         System.out.println("Voici les tokens dans le bon ordre : ");
         System.out.println(texteEnOrdre);
+
+        //On recherche dans le lexique leurs correspondance
+        //On récupère le contenu du fichier
+        strFile = gram.readFileQuick(lexique, StandardCharsets.UTF_8);
+
+        //On traduit la phrase
+        phrase = gram.translateTokens(strFile, texteEnOrdre);
+        System.out.println("Phrase traduite : ");
+        System.out.println(phrase);
+    }
+
+    private String translateTokens(String strFile, String texteEnOrdre) {
+        String phraseTraduite = null;
+        String[] tokens = texteEnOrdre.split(" ");
+        String[] lines = strFile.split("\n");
+        for (int a = 0; a < tokens.length; a++) {
+
+            for (int i = 0; i < lines.length; i++) {
+                String line = lines[i];
+                String[] lexique = line.split(" ");
+                if (lexique[1].equals(tokens[a])) {
+                    if (phraseTraduite == null) {
+                        phraseTraduite = lexique[0];
+                    } else {
+                        phraseTraduite = phraseTraduite + " " + lexique[0];
+                    }
+                }
+            }
+        }
+        return phraseTraduite;
     }
 }
