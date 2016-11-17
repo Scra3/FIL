@@ -27,8 +27,9 @@ import java.util.regex.Pattern;
 
 /**
  *
- * @author scra
+ * @author Alban BERTOLINI et David Guerroudj
  */
+
 public class GramVF {
 
     private static Object config;
