@@ -312,11 +312,9 @@ public class GramVF {
 
     public static void main(String[] args) throws IOException {
 
-        BufferedReader buff = null;
         GramVF gram = new GramVF();
         final String input = "src/gramvf/tokens.txt";
         final String lexique = "src/gramvf/lexique_np.fr.code";
-        final String compteFile = "src/gramvf/compte.txt";
         final int N = 2; // correspond au model N-gram
         double nombreMotsCorpus; // nombre de tokens du corpus
         String strFile = "";
