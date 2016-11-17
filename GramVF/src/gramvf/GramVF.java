@@ -166,7 +166,6 @@ public class GramVF {
     }
 
     //Compte le nombre de mot par ligne
-
     private int count(String[] lignes, String modele) {
         int count = 0;
         for (int k = 0; k < lignes.length; k++) {
@@ -290,6 +289,27 @@ public class GramVF {
         T[T.length - 1] = temp;
     }
 
+    private String translateTokens(String strFile, String texteEnOrdre) {
+        String phraseTraduite = null;
+        String[] tokens = texteEnOrdre.split(" ");
+        String[] lines = strFile.split("\n");
+        for (int a = 0; a < tokens.length; a++) {
+
+            for (int i = 0; i < lines.length; i++) {
+                String line = lines[i];
+                String[] lexique = line.split(" ");
+                if (lexique[1].equals(tokens[a])) {
+                    if (phraseTraduite == null) {
+                        phraseTraduite = lexique[0];
+                    } else {
+                        phraseTraduite = phraseTraduite + " " + lexique[0];
+                    }
+                }
+            }
+        }
+        return phraseTraduite;
+    }
+
     public static void main(String[] args) throws IOException {
 
         BufferedReader buff = null;
@@ -302,6 +322,7 @@ public class GramVF {
         String strFile = "";
         String phrase; // est la traduction des tokens
         String[] modele = null;
+
         String texte = "3323 47548 2493 84767 83250";// TEXTE À METTRE DANS L'ORDRE , attention aux espaces
 
         // On récupère le contenu du fichier
@@ -353,26 +374,5 @@ public class GramVF {
         phrase = gram.translateTokens(strFile, texteEnOrdre);
         System.out.println("Phrase traduite : ");
         System.out.println(phrase);
-    }
-
-    private String translateTokens(String strFile, String texteEnOrdre) {
-        String phraseTraduite = null;
-        String[] tokens = texteEnOrdre.split(" ");
-        String[] lines = strFile.split("\n");
-        for (int a = 0; a < tokens.length; a++) {
-
-            for (int i = 0; i < lines.length; i++) {
-                String line = lines[i];
-                String[] lexique = line.split(" ");
-                if (lexique[1].equals(tokens[a])) {
-                    if (phraseTraduite == null) {
-                        phraseTraduite = lexique[0];
-                    } else {
-                        phraseTraduite = phraseTraduite + " " + lexique[0];
-                    }
-                }
-            }
-        }
-        return phraseTraduite;
     }
 }
