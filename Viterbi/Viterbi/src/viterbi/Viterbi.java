@@ -1,10 +1,11 @@
 package viterbi;
 
 import java.io.BufferedReader;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -15,7 +16,10 @@ public class Viterbi {
     //variables globales 
     static int tailleCorpus; // 631991
     static HashMap<String, String> estimationModele;
-
+    static Double[][] alpha;
+    static Double[][] beta;
+    static String corpusTokenize;
+    
     //Afficher un tableau de string
     private void displayTable(String[] tableau) {
         for (String tableau1 : tableau) {
@@ -37,42 +41,11 @@ public class Viterbi {
         }
     }
 
-    // Charger le fichier dans un buffer
-    private BufferedReader getBufferedReader(String fichier) {
-
-        BufferedReader buff = null;
-        try {
-            InputStream flux = new FileInputStream(fichier);
-            InputStreamReader ipsr = new InputStreamReader(flux);
-            buff = new BufferedReader(ipsr);
-
-        } catch (IOException e) {
-            System.out.println(e.toString());
-            System.out.println(" Impossible de lire le fichier");
-        } finally {
-            return buff;
-        }
-    }
-
-    //Permet de lire un fichier et de le retourner dans un string
-    private String readFile(BufferedReader fichier) throws IOException {
-
-        String line;
-        String text = "";
-        try {
-            while ((line = fichier.readLine()) != null) {
-                text = text + line;
-                text = text + "\n";
-            }
-            line = "";
-        } catch (IOException io) {
-            System.out.println(io + " Error file " + fichier);
-        } finally {
-            if (!text.equals("")) {
-                fichier.close();
-            }
-        }
-        return text;
+    // Permet de lire un fichier de le sotcker dans un string
+    static String readFileQuick(String path, Charset encoding)
+            throws IOException {
+        byte[] encoded = Files.readAllBytes(Paths.get(path));
+        return new String(encoded, encoding);
     }
 
     // retourne chaque étape dans un tableau
@@ -137,17 +110,38 @@ public class Viterbi {
     }
 
     // initialise alpha et beta avec l'étape 1 du treillis
-    private Double[] initViterbi(int n, ArrayList<String> etape1) {
-        Double[] matrice = new Double[1];
-        Double[][] alpha = new Double[1][n];
-        Double[][] beta = new Double[1][n];
+    private void initViterbi(int n, LinkedHashMap<String, ArrayList<String>> treillis) {
+        alpha = new Double[1][n];
+        beta = new Double[1][n];
 
-        for (int i = 0; i < etape1.size(); i++) {
-            alpha[1][i] = probabiliteInitiale(etape1.get(i)) * probabiliteEmission(etape1.get(i), i);
+        for (int i = 0; i < treillis.get("0").size(); i++) {
+            alpha[1][i] = probabiliteInitiale(getMot(treillis.get("0").get(i))) * getPE(treillis.get("0").get(i));
             beta[1][i] = 0.0;
         }
-
-        return matrice;
+    }
+    
+    //Suite de viterbi
+    private void viterbi(LinkedHashMap<String, ArrayList<String>> treillis,Double [][] matrice){
+        // On ne fait pas l'étape une car on vient de la faire préalablement avec initVIterbi
+        for (int i = 1; i < treillis.size(); i++) {
+            int indiceMin = trouveMinAlpha(i-1);
+            for (int j = 0; j < alpha.length; j++) {
+                int a = compterMots(treillis.get(Integer.toString(i)).get(j));
+                int b = compterMots(treillis.get(Integer.toString(i-1)).get(indiceMin));
+                double P = (double)a/(double)b;
+                alpha[i][j]= alpha[i-1][indiceMin]*getPE(treillis.get(Integer.toString(i)).get(j)) * P;
+                
+                beta[i][j]= (double)indiceMin;
+            }
+        }
+        
+    }
+    
+    //La fonction trouve_min_alpha(i) permet de trouver l’indice m de la plus petite valeur de alpha à la position i
+    private int trouveMinAlpha(int indice){
+        int i = 0;
+        
+        return i;
     }
 
     //calcule la proba initiale du mot
@@ -158,28 +152,46 @@ public class Viterbi {
         return probabilite;
     }
 
-    private double probabiliteEmission(String motW, int etape) {
-        double probabilite = 0;
-        return probabilite;
+    // on va chercher la probabilité d'émission
+    private String getMot(String motWandProb) {
+       return  motWandProb.split(" ")[0];
+    }
+      private Double getPE(String motWandProb) {
+        return Double.parseDouble(motWandProb.split(" ")[1]);
     }
 
-    private void compterMots(String corpus) {
-        tailleCorpus = corpus.split("\\\\s").length;
+    private void compterMots() {
+        tailleCorpus = corpusTokenize.split("\\\\s").length;
     }
-
-    private void initHashMap(String bigrammes){
+    
+      private int compterMots(String mot) {
+         String[] t = corpusTokenize.split("\\\\s");
+        tailleCorpus = t.length;
+        int compteur = 0;
+          for (int i = 0; i < tailleCorpus; i++) {
+              if (t[i].equals(mot)) {
+                  compteur ++;
+              }
+          }
+          return compteur;
+    }
+    //Charger tous les bigramme dans une hashmap
+    private void initHashMap(String bigrammes) {
         String[] lignes = bigrammes.split("\n");
-        String a; // tokens
-        String b; // nb occurences
+        String a, b; // tokens
+        String c; // nb occurences
+        HashMap<String, String> estima = new HashMap<>();
+
         for (int i = 0; i < lignes.length; i++) {
             String[] sequence = lignes[i].split(" ");
             a = sequence[0];
             b = sequence[1];
-            estimationModele.put(b, a);                   
+            c = sequence[2];
+            estima.put(a + " " + b, c);
         }
+        estimationModele = estima;
     }
-            
-            
+
     /**
      * @param args the command line arguments
      */
@@ -187,14 +199,12 @@ public class Viterbi {
 
         //DÉCLARATIONS
         final String cheminTreillis = "src/viterbi/treillis.txt"; // chemin du treillis
-        final String chemintoken = "src/viterbi/modele_2g_ratp_fr.txt"; // chemin du token
-        final String cheminCorpusToken = "src/viterbi/corpusToken.txt";
+        final String cheminCorpusToken = "src/viterbi/corpusTokens.txt";
         final String cheminBigrammes = "src/viterbi/bigramme.txt";
+
         Viterbi viterbi = new Viterbi();
         BufferedReader buff = null; // buffer pour lire le fichier treillis
         String strFile = ""; // fichier treillis
-        String token = ""; // fichier tokens
-        String corpusTokenize = ""; // fichier corpusTokenize
         String bigrammes = ""; // fichier corpusTokenize
         LinkedHashMap<String, ArrayList<String>> treillis;
         String[] allMinEm;
@@ -204,31 +214,24 @@ public class Viterbi {
         String beta[][] = new String[T][];
 
         // On récupère le contenu du fichier
-        buff = viterbi.getBufferedReader(cheminTreillis);
-        strFile = viterbi.readFile(buff);
-
+        strFile = viterbi.readFileQuick(cheminTreillis, StandardCharsets.UTF_8);
         // On récupère le contenu du token
-        buff = viterbi.getBufferedReader(chemintoken);
-        token = viterbi.readFile(buff);
 
-        // On récupère le contenu du token
-        buff = viterbi.getBufferedReader(cheminCorpusToken);
-        corpusTokenize = viterbi.readFile(buff);
+        corpusTokenize = viterbi.readFileQuick(cheminCorpusToken, StandardCharsets.UTF_8);
+
         // mots du corpus
         viterbi.compterMots(corpusTokenize);
-        
-       
-        // On récupère le contenu du token
-        buff = viterbi.getBufferedReader(cheminBigrammes);
-        bigrammes = viterbi.readFile(buff);
 
-        // Insérérer dans notre hashmap chaque étape retourne le treillis
+        // On récupère le contenu du token
+        bigrammes = viterbi.readFileQuick(cheminBigrammes, StandardCharsets.UTF_8);
+
+        // Initialiser HashMap avec tous les tokens
+        viterbi.initHashMap(bigrammes);
+        // Insérérer dans notre hashmap chaque étape  : retourne le treillis
         treillis = viterbi.insertTreillis(strFile);
         //viterbi.displayMap(treillis);
         // on get avec la prob d émisison
         allMinEm = viterbi.getAllMinEMissionEtape(treillis);
         viterbi.displayTable(allMinEm);
-
     }
 }
-
