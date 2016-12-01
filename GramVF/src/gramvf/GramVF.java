@@ -150,6 +150,7 @@ public class GramVF {
             // pour chaque modele de chaque lignes
             for (int j = 0; j < modele.length; j++) {
                 // on vérifie si le modele existe déja
+                // RESOUDRE CE PROB
                 for (int k = 0; k < modeles.size(); k++) {
                     Pair occurence = (Pair) modeles.get(k);
                     if (occurence.getModele().equals(modele[j])) {
@@ -167,6 +168,7 @@ public class GramVF {
                 } else {
                     find = false;
                 }
+                // RESOUDRE CE PROB
             }
         }
 
@@ -289,13 +291,12 @@ public class GramVF {
 
             // On génère les n-grams
             String[] lignes = gram.wrapLine(strFile);
-            
+
             List pair = gram.getModeles(lignes, N);
 
             double[] prob = gram.maximumVraissemblanceLissageLaplace(texte[0], lignes, pair, N);
 
             //gram.displayList(pair);
-            
             /* for (int i = 0; i < prob.length; i++) {
              System.out.println(prob[i]);
              }*/
