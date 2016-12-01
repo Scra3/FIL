@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package viterbi;
 
 import java.io.BufferedReader;
@@ -11,14 +6,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/**
- *
- * @author b16007026
- */
 public class Viterbi {
+
+    //variables globales 
+    static int tailleCorpus; // 631991
+    static HashMap<String, String> estimationModele;
 
     //Afficher un tableau de string
     private void displayTable(String[] tableau) {
@@ -106,6 +102,7 @@ public class Viterbi {
         return treillis;
     }
 
+    // RETURN le mininum emission d'une étape prenant en param les étape et l'indice de l'étape
     private String minEmission(LinkedHashMap<String, ArrayList<String>> treillis, String etape) {
         String minEmission = null;
         double min;
@@ -125,8 +122,64 @@ public class Viterbi {
             }
         }
         return minEmission;
+
     }
 
+    // return tous les min emissions des étapes
+    private String[] getAllMinEMissionEtape(LinkedHashMap<String, ArrayList<String>> treillis) {
+        Viterbi viter = new Viterbi();
+        int tailleTreillis = treillis.size();
+        String[] mins = new String[tailleTreillis];
+        for (int i = 0; i < tailleTreillis; i++) {
+            mins[i] = viter.minEmission(treillis, Integer.toString(i));
+        }
+        return mins;
+    }
+
+    // initialise alpha et beta avec l'étape 1 du treillis
+    private Double[] initViterbi(int n, ArrayList<String> etape1) {
+        Double[] matrice = new Double[1];
+        Double[][] alpha = new Double[1][n];
+        Double[][] beta = new Double[1][n];
+
+        for (int i = 0; i < etape1.size(); i++) {
+            alpha[1][i] = probabiliteInitiale(etape1.get(i)) * probabiliteEmission(etape1.get(i), i);
+            beta[1][i] = 0.0;
+        }
+
+        return matrice;
+    }
+
+    //calcule la proba initiale du mot
+    private double probabiliteInitiale(String motW) {
+        double probabilite = 0;
+        double a = Double.parseDouble(estimationModele.get(motW));
+        probabilite = a / tailleCorpus;
+        return probabilite;
+    }
+
+    private double probabiliteEmission(String motW, int etape) {
+        double probabilite = 0;
+        return probabilite;
+    }
+
+    private void compterMots(String corpus) {
+        tailleCorpus = corpus.split("\\\\s").length;
+    }
+
+    private void initHashMap(String bigrammes){
+        String[] lignes = bigrammes.split("\n");
+        String a; // tokens
+        String b; // nb occurences
+        for (int i = 0; i < lignes.length; i++) {
+            String[] sequence = lignes[i].split(" ");
+            a = sequence[0];
+            b = sequence[1];
+            estimationModele.put(b, a);                   
+        }
+    }
+            
+            
     /**
      * @param args the command line arguments
      */
@@ -134,19 +187,48 @@ public class Viterbi {
 
         //DÉCLARATIONS
         final String cheminTreillis = "src/viterbi/treillis.txt"; // chemin du treillis
+        final String chemintoken = "src/viterbi/modele_2g_ratp_fr.txt"; // chemin du token
+        final String cheminCorpusToken = "src/viterbi/corpusToken.txt";
+        final String cheminBigrammes = "src/viterbi/bigramme.txt";
         Viterbi viterbi = new Viterbi();
         BufferedReader buff = null; // buffer pour lire le fichier treillis
         String strFile = ""; // fichier treillis
+        String token = ""; // fichier tokens
+        String corpusTokenize = ""; // fichier corpusTokenize
+        String bigrammes = ""; // fichier corpusTokenize
         LinkedHashMap<String, ArrayList<String>> treillis;
+        String[] allMinEm;
+        int T = 4; //longueur du treillis
+        int N = 4; // mots possibles à chaque étape du treillis
+        String alpha[][] = new String[T][];
+        String beta[][] = new String[T][];
+
         // On récupère le contenu du fichier
         buff = viterbi.getBufferedReader(cheminTreillis);
         strFile = viterbi.readFile(buff);
 
+        // On récupère le contenu du token
+        buff = viterbi.getBufferedReader(chemintoken);
+        token = viterbi.readFile(buff);
+
+        // On récupère le contenu du token
+        buff = viterbi.getBufferedReader(cheminCorpusToken);
+        corpusTokenize = viterbi.readFile(buff);
+        // mots du corpus
+        viterbi.compterMots(corpusTokenize);
+        
+       
+        // On récupère le contenu du token
+        buff = viterbi.getBufferedReader(cheminBigrammes);
+        bigrammes = viterbi.readFile(buff);
+
         // Insérérer dans notre hashmap chaque étape retourne le treillis
         treillis = viterbi.insertTreillis(strFile);
         //viterbi.displayMap(treillis);
+        // on get avec la prob d émisison
+        allMinEm = viterbi.getAllMinEMissionEtape(treillis);
+        viterbi.displayTable(allMinEm);
 
-        System.out.println(viterbi.minEmission(treillis, "0"));
     }
-
 }
+
