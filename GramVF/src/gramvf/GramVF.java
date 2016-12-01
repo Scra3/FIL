@@ -1,22 +1,31 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
 package gramvf;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  *
- * @author alban and david
+ * @author scra
  */
 public class GramVF {
+
+    private static Object config;
 
     // Afficher une list de Pair
     private void displayList(List l) {
@@ -31,26 +40,6 @@ public class GramVF {
     private void displayTable(String[] tableau) {
         for (String tableau1 : tableau) {
             System.out.println(tableau1);
-        }
-    }
-
-    private void writeFile(String file, String text) {
-        FileWriter fichierw = null;
-        try {
-            File fichier = new File(file); // définir l'arborescence
-            fichier.createNewFile();
-            fichierw = new FileWriter(fichier);
-            fichierw.write(text);  // écrire une ligne dans le fichier resultat.txt
-        } catch (IOException e) {
-            System.out.println(e);
-        } finally {
-            if (fichierw != null) {
-                try {
-                    fichierw.close(); // fermer le fichier à la fin des traitements
-                } catch (IOException e) {
-                    System.out.println(e);
-                }
-            }
         }
     }
 
@@ -138,18 +127,20 @@ public class GramVF {
     }
 
     // Retourner l'ensemble des modele du corpus avec leurs nombres de fois qu'il apparait
-    private List getModeles(String[] lignes, int N) {
+    private HashMap<String, Integer> getModeles(String[] lignes, int N) {
         GramVF gram = new GramVF();
         boolean find = false;
         int tailleModeles = 0;
-        List modeles = new LinkedList();
+        HashMap<String, Integer> map = new HashMap<String, Integer>();
 
         // Pour chaque ligne
         for (int i = 0; i < lignes.length; i++) {
             String[] modele = gram.getModele(lignes[i], N);
+
             // pour chaque modele de chaque lignes
             for (int j = 0; j < modele.length; j++) {
                 // on vérifie si le modele existe déja
+<<<<<<< HEAD
                 // RESOUDRE CE PROB
                 for (int k = 0; k < modeles.size(); k++) {
                     Pair occurence = (Pair) modeles.get(k);
@@ -165,14 +156,22 @@ public class GramVF {
                     Pair occurence = new Pair(modele[j], 1);
                     modeles.add(occurence);
 
+=======
+                if (map.containsKey(modele[j])) {
+                    map.put(modele[j], map.get(modele[j]) + 1);
+>>>>>>> ecd9c6b0825e863373dc237cbb6ab72d31a92558
                 } else {
-                    find = false;
+                    map.put(modele[j], 1);
                 }
+<<<<<<< HEAD
                 // RESOUDRE CE PROB
+=======
+
+>>>>>>> ecd9c6b0825e863373dc237cbb6ab72d31a92558
             }
         }
 
-        return modeles;
+        return map;
     }
 
     private int count(String[] lignes, String modele) {
@@ -197,73 +196,99 @@ public class GramVF {
         return count;
     }
 
-    private double[] maximumVraissemblanceLissageLaplace(String texte, String[] lignes, List pair, int N) {
+    private double maximumVraissemblanceLissageLaplace(String texte, String[] lignes, HashMap<String, Integer> pair, int N) {
         GramVF gram = new GramVF();
         final double alphaLaplace = 1;
         double nombreMotsCorpus;
         double a, b;
-        double[] prob = null;
-        boolean find = false;
-        int indice = 0;
-
+        double prob = 0.0;
+        double P;
         // on compte le nombre de mot du corpus 
         nombreMotsCorpus = gram.countAll(lignes);
-
+        // on met au format n-gram 
         String Ttexte[] = gram.getModele(texte, N);
-        prob = new double[Ttexte.length];
+
+        // texte modele par modele
         for (int i = 0; i < Ttexte.length; i++) {
             // on cherche un modele semblable
-            for (int j = 0; j < pair.size(); j++) {
 
-                Pair value = (Pair) pair.get(i);
-                String mod = value.getModele();
-                if (mod.equals(Ttexte[i])) {
-                    // si modele est inférieur à N
-                    if (mod.split(" ").length <= N - 1) {
-                        b = gram.countAll(lignes);
-                        a = value.getCompteur();
-                    } else {
-                        // si c'est un modele N-gram
-                        // élément de gauche car indice 0
-                        String wmoins1 = mod.split(" ")[0];
-                        // retourne le le nombre de fois qu'on trouve wmoins1 dans le corpus 
-                        b = gram.count(lignes, wmoins1.trim());
-                        a = value.getCompteur();
-                    }
-                    double P = (a + alphaLaplace) / (b + (nombreMotsCorpus * alphaLaplace));
-                    prob[indice] = P;
-                    find = true;
-                    break;
+            if (pair.containsKey(Ttexte[i])) {
+
+                if (Ttexte[i].split(" ").length <= N - 1) {
+                    b = (double) gram.countAll(lignes);
+                    a = (double) gram.count(lignes, Ttexte[i]);
+
+                    //System.out.println("premier " + mod);
+                } else {
+                    String wmoins1 = Ttexte[i].split(" ")[0];
+                    //System.out.println("second " + wmoins1);
+
+                    b = (double) gram.count(lignes, wmoins1);
+                    a = (double) pair.get(Ttexte[i]);
                 }
-            }
-            if (find == false) {
-                prob[indice] = (double) alphaLaplace / nombreMotsCorpus * alphaLaplace;
+
+                // si la séquence existe dans le corpus
+                P = -Math.log((a + alphaLaplace) / (b + nombreMotsCorpus * alphaLaplace));
+
             } else {
-                find = false;
+                // si la séquence n'existe pas dans le corpus
+                P = -Math.log(alphaLaplace / (nombreMotsCorpus * alphaLaplace));
             }
-            indice++;
+            prob = prob + P;
         }
         return prob;
     }
 
     private double logProb(double[] prob) {
-        // w1
-        double plog = prob[0];
-        // w2 .. wn
-        for (int i = 1; i < prob.length; i++) {
+        double plog = 0.0;
+        for (int i = 0; i < prob.length; i++) {
             plog = plog - Math.log(prob[i]);
         }
-        // Plog(W)
         return plog;
+    }
+
+    private double perplexite(double prob, String texte, String[] corpus) {
+        GramVF gram = new GramVF();
+        String[] texteTable = new String[1];
+        texteTable[0] = texte;
+        double nombresMots = gram.countAll(corpus);
+        double cal = (1 / (double) nombresMots) * prob;
+        double plogEvaluation = Math.pow(2, cal);
+        return plogEvaluation;
+
+    }
+
+    public HashMap<String, Double> anagramma(String T[], int first, HashMap<String, Double> save) {
+        if ((T.length - first) <= 1) {
+            String saveStr = T[0];
+            for (int i = 1; i < T.length; i++) {
+                saveStr = saveStr + " " + T[i];
+            }
+            save.put(saveStr, 0.0);
+        } else {
+            for (int i = 0; i < T.length - first; i++) {
+                round(T, first);
+                save = anagramma(T, first + 1, save);
+            }
+        }
+        return save;
+    }
+
+    private void round(String T[], int i) {
+        String temp = T[i];
+        for (int j = i; j < T.length - 1; j++) {
+            T[j] = T[j + 1];
+        }
+        T[T.length - 1] = temp;
     }
 
     public static void main(String[] args) throws IOException {
 
         BufferedReader buff = null;
         GramVF gram = new GramVF();
-
         final String input = "src/gramvf/tokens.txt";
         final String compteFile = "src/gramvf/compte.txt";
+<<<<<<< HEAD
         final int N = 2; // pour 3 , 4 etc ca ne marche pas il faut termine d'implémenter certaines fonctionnalités
 
         if (args.length == 0) {
@@ -309,7 +334,50 @@ public class GramVF {
             //System.out.println(plogEvaluation);
         } else {
             System.err.println("Aucun arguments");
-        }
-    }
+=======
+        final int N = 2; // correspond au model N-gram
+        String strFile = "";
+        String[] modele = null;
+        String texte = "56384 10276 28930 87086 47758"; // TEXTE À METTRE DANS L'ORDRE
 
+        // On récupère le contenu du fichier
+        buff = gram.getBufferedReader(input);
+        strFile = gram.readFile(buff);
+
+        // On génère les n-grams
+        String[] lignes = gram.wrapLine(strFile);
+        HashMap<String, Integer> pair = gram.getModeles(lignes, N);
+
+        // Permutations de la phrases 
+        // calcul de la perplexité
+        String[] Ttexte = texte.split(" ");
+        HashMap<String, Double> textePermute = new HashMap<String, Double>();
+
+        // on cherche toute les permutations possible
+        textePermute = gram.anagramma(Ttexte, 0, textePermute);
+
+        /*On calcul la perplexité pour chaque permutation*/
+        Set cles = textePermute.keySet();
+        Iterator it = cles.iterator();
+        while (it.hasNext()) {
+            texte = (String) it.next();
+            double prob = gram.maximumVraissemblanceLissageLaplace(texte, lignes, pair, N);
+            double plogEvaluation = gram.perplexite(prob, texte, lignes);
+            textePermute.put(texte, plogEvaluation);
+>>>>>>> ecd9c6b0825e863373dc237cbb6ab72d31a92558
+        }
+
+        //on chercher la perplexité la plus faible
+        double valueSave = 1000000000; // permet d'initialise la premiere valeur
+        String texteEnOrdre = "";
+        for (String mapKey : textePermute.keySet()) {
+            double value = textePermute.get(mapKey);
+            if (value <= valueSave) {
+                valueSave = value;
+                texteEnOrdre = mapKey;
+            }
+        }
+        System.out.println("Voici les tokens dans le bon ordre : ");
+        System.out.println(texteEnOrdre);
+    }
 }
