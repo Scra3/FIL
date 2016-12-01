@@ -149,12 +149,34 @@ public class GramVF {
             // pour chaque modele de chaque lignes
             for (int j = 0; j < modele.length; j++) {
                 // on vérifie si le modele existe déja
+<<<<<<< HEAD
+                // RESOUDRE CE PROB
+                for (int k = 0; k < modeles.size(); k++) {
+                    Pair occurence = (Pair) modeles.get(k);
+                    if (occurence.getModele().equals(modele[j])) {
+                        int n = occurence.getCompteur() + 1;
+                        occurence.setCompteur(n);
+                        find = true;
+                        break;
+                    }
+                }
+                if (find == false) {
+                    // on doit vérifier que le modele soit de la taille de N
+                    Pair occurence = new Pair(modele[j], 1);
+                    modeles.add(occurence);
+
+=======
                 if (map.containsKey(modele[j])) {
                     map.put(modele[j], map.get(modele[j]) + 1);
+>>>>>>> ecd9c6b0825e863373dc237cbb6ab72d31a92558
                 } else {
                     map.put(modele[j], 1);
                 }
+<<<<<<< HEAD
+                // RESOUDRE CE PROB
+=======
 
+>>>>>>> ecd9c6b0825e863373dc237cbb6ab72d31a92558
             }
         }
 
@@ -309,9 +331,62 @@ public class GramVF {
     public static void main(String[] args) throws IOException {
 
         GramVF gram = new GramVF();
+<<<<<<< HEAD
         final String input = "src/gramvf/texteToken.txt";
         final String lexique = "src/gramvf/lexique_np.fr.code";
         double nombreMotsCorpus; // nombre de tokens du corpus
+=======
+        final String input = "src/gramvf/tokens.txt";
+        final String compteFile = "src/gramvf/compte.txt";
+<<<<<<< HEAD
+        final int N = 2; // pour 3 , 4 etc ca ne marche pas il faut termine d'implémenter certaines fonctionnalités
+
+        if (args.length == 0) {
+            String[] texte = new String[1];
+            texte[0] = "texteTest.txt"; // texte à mettre en ordre
+            String cheminCorpus = "texteToken.txt"; // nom du fichier
+            String strFile = "";
+            String corpus = "";
+            String[] modele = null;
+
+            //on récupère le texte
+            buff = gram.getBufferedReader("src/gramvf/" + texte[0]);
+            texte[0] = gram.readFile(buff);
+            // on récupère le coprus train pour l'écrire dans le fichier tokens
+            // On récupère le contenu du fichier
+            buff = gram.getBufferedReader("src/gramvf/" + cheminCorpus);
+            corpus = gram.readFile(buff);
+
+            // on écrite dans tokens
+            gram.writeFile(input, corpus);
+
+            // On récupère le contenu du fichier
+            buff = gram.getBufferedReader(input);
+            strFile = gram.readFile(buff);
+
+            // On génère les n-grams
+            String[] lignes = gram.wrapLine(strFile);
+
+            List pair = gram.getModeles(lignes, N);
+
+            double[] prob = gram.maximumVraissemblanceLissageLaplace(texte[0], lignes, pair, N);
+
+            //gram.displayList(pair);
+            /* for (int i = 0; i < prob.length; i++) {
+             System.out.println(prob[i]);
+             }*/
+            double nbMots = gram.countAll(texte);
+            // log
+            double plog = gram.logProb(prob);
+
+            double cal = (1 / (double) nbMots) * plog;
+            double plogEvaluation = Math.pow(2, cal);
+            //System.out.println(plogEvaluation);
+        } else {
+            System.err.println("Aucun arguments");
+=======
+        final int N = 2; // correspond au model N-gram
+>>>>>>> 3201b9144d1a387a2acb56d57e125d537dbcd148
         String strFile = "";
         String phrase; // est la traduction des tokens
         String[] modele;
@@ -352,6 +427,7 @@ public class GramVF {
             double prob = gram.maximumVraissemblanceLissageLaplace(nombreMotsCorpus, texte, lignes, pair, N);
             double plogEvaluation = gram.perplexite(nombreMotsCorpus, prob, texte, lignes);
             textePermute.put(texte, plogEvaluation);
+>>>>>>> ecd9c6b0825e863373dc237cbb6ab72d31a92558
         }
 
         //on chercher la perplexité la plus faible
