@@ -430,7 +430,7 @@ public class GramAndViterbi {
     protected void initViterbi() {
         int n = treillis.get("0").size();
         alpha = new Double[treillis.size()][n];
-        beta = new Double[treillis.size()][n];
+        beta = new Double[treillis.size() + 1][n]; // size+1 Pour trouver le derniere élément du treillis
 
         for (int i = 0; i < treillis.get("0").size(); i++) {
             if (estimationModele.containsKey(getMot(treillis.get("0").get(i)))) {
@@ -449,10 +449,11 @@ public class GramAndViterbi {
 
     //Suite de viterbi
     protected void viterbi(LinkedHashMap<String, ArrayList<String>> treillis) {
-
+        int indiceMin = 0;
+        int i;
         // On ne fait pas l'étape une car on vient de la faire préalablement avec initVIterbi
-        for (int i = 1; i < treillis.size(); i++) {
-            int indiceMin = trouveMinAlpha(i - 1);
+        for (i = 1; i < treillis.size(); i++) {
+            indiceMin = trouveMinAlpha(i - 1);
             for (int j = 0; j < treillis.get(Integer.toString(i)).size(); j++) {
                 //ON vérifie que le mot existe , si il existe pas on applique le lissage de laplace
                 String mot = getMot(treillis.get(Integer.toString(i - 1)).get(indiceMin)) + " " + getMot(treillis.get(Integer.toString(i)).get(j));
@@ -475,7 +476,27 @@ public class GramAndViterbi {
                 beta[i][j] = (double) indiceMin;
             }
         }
+        endViterbi(alpha[i - 1]);
+    }
 
+    public void endViterbi(Double[] alpha) {
+        // on récupère le plus petit
+        double min = 1000.0;
+        double indice = 0;
+        min = alpha[0];
+        for (int i = 1; i < alpha.length; i++) {
+            if (alpha[i] != null) {
+                if (min > alpha[i]) {
+                    min = alpha[i];
+                    System.out.println("ede");
+                    indice = i;
+                }
+            }else{
+                break;
+            }
+        }
+        int tailleTreillis = treillis.size();
+        beta[tailleTreillis][0] = indice;
     }
 
     public static void main(String[] args) throws IOException {
@@ -578,14 +599,15 @@ public class GramAndViterbi {
         // ON chercher les indices  
         String tokens = null;
 
+        //Affichage du texte trouvé avec viterbi  
         int a = (int) ((double) beta[1][0]);
         tokens = gram.getMot(treillis.get("0").get(a));
-        a = (int) ((double) beta[2][0]);
-        tokens = tokens + " " + gram.getMot(treillis.get("1").get(a));
-        a = (int) ((double) beta[3][0]);
-        tokens = tokens + " " + gram.getMot(treillis.get("2").get(a));
-        tokens = tokens + " " + gram.getMot(treillis.get("3").get(0));
-        
+
+        for (int i = 2; i < beta.length; i++) {
+            a = (int) ((double) beta[i][0]);
+            tokens = tokens + " " + gram.getMot(treillis.get(Integer.toString(i - 1)).get(a));
+        }
+
         System.out.println(gram.translateTokens(lexique, tokens));
 
     }
