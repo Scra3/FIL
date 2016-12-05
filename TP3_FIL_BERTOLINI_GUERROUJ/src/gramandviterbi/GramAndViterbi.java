@@ -4,6 +4,7 @@
 package gramandviterbi;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -109,7 +110,6 @@ public class GramAndViterbi {
         // Pour chaque ligne
         for (int i = 0; i < lignes.length; i++) {
             String[] modele = gram.getModele(lignes[i], N);
-
             // pour chaque modele de chaque lignes
             for (int j = 0; j < modele.length; j++) {
                 // on vérifie si le modele existe déja
@@ -168,8 +168,9 @@ public class GramAndViterbi {
         return compteur;
     }
 
-    // permet d'appliquer la formule de maximum de vraissemblance avec le lissage de laplace
-    private double maximumVraissemblanceLissageLaplace(double nombreMotsCorpus, String texte, String[] lignes, HashMap<String, Integer> pair, int N) {
+    // permet d'appliquer la out.write(latency[i] + "\n");formule de maximum de vraissemblance avec le lissage de laplace
+    private double maximumVraissemblanceLissageLaplace(String texte, String[] lignes, HashMap<String, Integer> pair, int N) {
+        int nombreMotsCorpus = tailleCorpus;
         GramAndViterbi gram = new GramAndViterbi();
         final double alphaLaplace = 1;
         double a, b;
@@ -178,17 +179,18 @@ public class GramAndViterbi {
         // on compte le nombre de mot du corpus 
         // on met au format n-gram 
         String Ttexte[] = gram.getModele(texte, N);
-
         // texte modele par modele
         for (int i = 0; i < Ttexte.length; i++) {
             // on cherche un modele semblable
 
             if (pair.containsKey(Ttexte[i])) {
 
+                // si la taille n'est pas de N-gram
                 if (Ttexte[i].split(" ").length <= N - 1) {
                     b = (double) nombreMotsCorpus;
                     a = (double) gram.countWithRegex(lignes, Pattern.quote(Ttexte[i]));
 
+                    // si la taille es de N-gram
                 } else {
                     String wmoins1 = Ttexte[i].split(" ")[0];
 
@@ -197,7 +199,7 @@ public class GramAndViterbi {
                 }
 
                 // si la séquence existe dans le corpus
-                P = -Math.log((a + alphaLaplace) / (b + nombreMotsCorpus * alphaLaplace));
+                P = -Math.log((a + alphaLaplace) / (b + (nombreMotsCorpus * alphaLaplace)));
 
             } else {
                 // si la séquence n'existe pas dans le corpus
@@ -209,11 +211,10 @@ public class GramAndViterbi {
     }
 
     // calcul la perplexite
-    private double perplexite(double nombresMots, double prob, String texte, String[] corpus) {
-        GramAndViterbi gram = new GramAndViterbi();
+    private double perplexite(double prob, String texte) {
         String[] texteTable = new String[1];
         texteTable[0] = texte;
-        double cal = (1 / (double) nombresMots) * prob;
+        double cal = (1 / (double) tailleCorpus) * prob;
         double plogEvaluation = Math.pow(2, cal);
         return plogEvaluation;
 
@@ -244,6 +245,7 @@ public class GramAndViterbi {
         T[T.length - 1] = temp;
     }
 
+    // lexique et phrase tokenise et retourne la phrase 
     private String translateTokens(String strFile, String texteEnOrdre) {
         String phraseTraduite = null;
         String[] tokens = texteEnOrdre.split(" ");
@@ -265,15 +267,36 @@ public class GramAndViterbi {
         return phraseTraduite;
     }
 
-    public void getLissageAndGram(String chemin,String texte, String[] lignes, HashMap<String, Integer> allGrams, int N) {
+    public String translatePhrase(String lexique, String phrase) {
+        String phraseTokenise = null;
+        String[] Tphrase = phrase.split(" ");
+        String[] Tlexique = lexique.split("\n");
+        for (int i = 0; i < Tphrase.length; i++) {
+            for (int j = 0; j < Tlexique.length; j++) {
+                String compare = Tlexique[j].split(" ")[0];
+                String token = Tlexique[j].split(" ")[1];
+                if (Tphrase[i].equals(compare)) {
+                    if (phraseTokenise == null) {
+                        phraseTokenise = token;
+                    } else {
+                        phraseTokenise = phraseTokenise + " " + token;
+                    }
+                }
+            }
+        }
+        return phraseTokenise;
+    }
+
+    public void getLissageAndGram(String chemin, String texte, String[] lignes, HashMap<String, Integer> allGrams, int N) throws IOException {
 
         Iterator i = allGrams.keySet().iterator();
         String save = "";
-        while (i.hasNext()) {
-            String clef = (String) i.next();
-            Integer valeur = (Integer) allGrams.get(clef);
+        BufferedWriter out = new BufferedWriter(new FileWriter(chemin));
 
-            double prob = maximumVraissemblanceLissageLaplace(tailleCorpus, clef, lignes, allGrams, N);
+        while (i.hasNext()) {
+            String clef = (String) i.next(); // 
+
+            double prob = maximumVraissemblanceLissageLaplace(clef, lignes, allGrams, N);
 
             if (save == "") {
                 save = clef + " " + prob + "\n";
@@ -281,9 +304,10 @@ public class GramAndViterbi {
             } else {
                 save = save + clef + " " + prob + "\n";
             }
-
+            out.write(save);
+            save = "";
         }
-        writeFile(save,chemin);
+        out.close();
     }
 
     public void writeFile(String texte, String chemin) {
@@ -311,31 +335,28 @@ public class GramAndViterbi {
         }
     }
 
-   //creation d'un nouveau treillis
-    public void buildTreilli(String ratp_en_fr, String chemin) {
-        try {
-            String treillis = "";
+    //creation d'un nouveau treillis
+    public void buildTreilli(String ratp_en_fr, String chemin) throws IOException {
+        String treillis = "";
+        int currentCol = -1;
+        String[] lignes = ratp_en_fr.split("\n");
+        BufferedWriter out = new BufferedWriter(new FileWriter(chemin));
+        for (int i = 0; i < lignes.length; i++) {
+            String[] mots = lignes[i].split(" ");
+            Integer i1 = Integer.parseInt(mots[0]);
+            String i2 = mots[1];
+            String i3 = mots[2];
 
-            BufferedReader buff = new BufferedReader(new FileReader(ratp_en_fr));
-
-            String line;
-            int currentCol = -1;
-            while ((line = buff.readLine()) != null) {
-                String[] mots = line.split(" ");
-                Integer i1 = Integer.parseInt(mots[0]);
-                String i2 = mots[1];
-                String i3 = mots[2];
-
-                if (i1 != currentCol) {
-                    currentCol = i1;
-                    treillis = treillis + "%col " + currentCol + "\n";
-                }
-                treillis = treillis + i2 + " " + i3 + "\n";
+            if (i1 != currentCol) {
+                currentCol = i1;
+                treillis = treillis + "%col " + currentCol + "\n";
             }
-            writeFile(treillis, chemin);
-        } catch (FileNotFoundException e) {
-        } catch (IOException e) {
+
+            treillis = treillis + i2 + " " + i3 + "\n";
+            out.write(treillis);
+            treillis = "";
         }
+        out.close();
     }
 
     protected void insertTreillis(String strTreillis) {
@@ -392,7 +413,7 @@ public class GramAndViterbi {
         double i = alpha[indice][0];
         int save = 0;
         // trouver la plus petite valeur 
-        for (int j = 1; j < treillis.get(Integer.toString(indice)).size(); j++) {
+        for (int j = 0; j < treillis.get(Integer.toString(indice)).size(); j++) {
 
             if (alpha[indice][j] < i) {
                 i = alpha[indice][j];
@@ -407,7 +428,7 @@ public class GramAndViterbi {
     protected double probabiliteInitiale(String motW) {
         double probabilite = 0;
         double a = Double.parseDouble(estimationModele.get(motW));
-        probabilite = a / (double) tailleCorpus;
+        probabilite = a / ((double) tailleCorpus);
         return probabilite;
     }
 
@@ -473,22 +494,25 @@ public class GramAndViterbi {
         beta = new Double[treillis.size() + 1][n]; // size+1 Pour trouver le derniere élément du treillis
 
         for (int i = 0; i < treillis.get("0").size(); i++) {
+
             if (estimationModele.containsKey(getMot(treillis.get("0").get(i)))) {
                 alpha[0][i] = probabiliteInitiale(getMot(treillis.get("0").get(i))) + getPE(treillis.get("0").get(i));
-            } else {
 
-                double prob = -Math.log(1 / ((double) tailleCorpus * 1));
+            } else {
+                double prob = -Math.log(1 / ((double) tailleCorpus));
                 // on le met dans la map
                 alpha[0][i] = prob + getPE(treillis.get("0").get(i));
                 estimationModele.put(getMot(treillis.get("0").get(i)), String.valueOf(prob));
             }
+
             beta[0][i] = 0.0;
         }
-        viterbi(treillis);
+
+        viterbi();
     }
 
     //Suite de viterbi
-    protected void viterbi(LinkedHashMap<String, ArrayList<String>> treillis) {
+    protected void viterbi() {
         int indiceMin = 0;
         int i;
         // On ne fait pas l'étape une car on vient de la faire préalablement avec initVIterbi
@@ -496,23 +520,24 @@ public class GramAndViterbi {
             indiceMin = trouveMinAlpha(i - 1);
             for (int j = 0; j < treillis.get(Integer.toString(i)).size(); j++) {
                 //ON vérifie que le mot existe , si il existe pas on applique le lissage de laplace
+                // on fabrique
                 String mot = getMot(treillis.get(Integer.toString(i - 1)).get(indiceMin)) + " " + getMot(treillis.get(Integer.toString(i)).get(j));
 
                 if (estimationModele.containsKey(getMot(treillis.get(Integer.toString(i)).get(j))) == false) {
-                    estimationModele.put(getMot(treillis.get(Integer.toString(i)).get(j)), Double.toString(-Math.log(1 / ((double) tailleCorpus * 1))));
-                }
-                /*if (estimationModele.containsKey(estimationModele.get(getMot(treillis.get(Integer.toString(i - 1)).get(indiceMin)))) == false) {
-                 estimationModele.put(getMot(treillis.get(Integer.toString(i - 1)).get(indiceMin)), Double.toString(-Math.log(1 / ((double) tailleCorpus * 1))));
-                 }*/
-                if (estimationModele.containsKey(estimationModele.get(mot)) == false) {
-                    estimationModele.put(mot, Double.toString(-Math.log(1 / ((double) tailleCorpus * 1))));
+
+                    estimationModele.put(getMot(treillis.get(Integer.toString(i)).get(j)), Double.toString(-Math.log(1 / ((double) tailleCorpus))));
                 }
 
-                double a = Double.parseDouble(estimationModele.get(mot));
-                double b = Double.parseDouble(estimationModele.get(getMot(treillis.get(Integer.toString(i - 1)).get(indiceMin))));
-                double P = (double) a / (double) b;
+                if (estimationModele.containsKey(mot) == false) {
+
+                    estimationModele.put(mot, Double.toString(-Math.log(1 / ((double) tailleCorpus))));
+                }
+
+                double P = Double.parseDouble(estimationModele.get(mot));
 
                 alpha[i][j] = alpha[i - 1][indiceMin] + getPE(treillis.get(Integer.toString(i)).get(j)) + P;
+                //afficher alpha
+
                 beta[i][j] = (double) indiceMin;
             }
         }
@@ -528,7 +553,6 @@ public class GramAndViterbi {
             if (alpha[i] != null) {
                 if (min > alpha[i]) {
                     min = alpha[i];
-                    System.out.println("ede");
                     indice = i;
                 }
             } else {
@@ -565,8 +589,7 @@ public class GramAndViterbi {
         String corpusFrancais = gram.readFileQuick(cheminCorpus_ratp_bilangFr, StandardCharsets.UTF_8);
         String lexiqueAnglais = gram.readFileQuick(cheminLexique_ratp_en, StandardCharsets.UTF_8);
         String lexiqueFrancais = gram.readFileQuick(cheminLexique_ratp_fr, StandardCharsets.UTF_8);
-        String table_ratp_en_fr = gram.readFileQuick(cheminTable_ratp_en_fr, StandardCharsets.UTF_8);
-        String newTreillis = gram.readFileQuick(cheminNewTreillis, StandardCharsets.UTF_8);
+        String tableTraduction = gram.readFileQuick(cheminTable_ratp_en_fr, StandardCharsets.UTF_8);
 
         // on compte le nombre de tokens dans le corpus
         gram.countAll();
@@ -577,9 +600,10 @@ public class GramAndViterbi {
         /**
          * ************************************************
          */
-        final int N = 2; // correspond au model N-gram
-        String texte = "47758 79732 7041 53452 53065";// TEXTE À METTRE DANS L'ORDRE , attention aux espaces
-
+        final int N = 2; // correspond au model N-gram 
+        String texte = "29839 85115 29 59443";// TEXTE À METTRE DANS L'ORDRE , attention aux espaces
+        // elle va à paris
+        //29839 85115 29 59443
         /**
          * ************************************************
          */
@@ -588,64 +612,63 @@ public class GramAndViterbi {
          * DANS LE FICHIER BIGRAMME******
          */
         //On génère les n-grams
-        //String[] lignes = gram.wrapLine(corpusTokenize);
-        //HashMap<String, Integer> allGrams = gram.getModeles(lignes, N);
+        String[] lignes = gram.wrapLine(corpusTokenize);
+        HashMap<String, Integer> allGrams = gram.getModeles(lignes, N);
         //texte tonkenize + le corpus sous formesDeLignes tous les grams du texte et l'indice de mon bigramme
-       // gram.getLissageAndGram(cheminBigrammes,texte, lignes, allGrams, N);
+        //gram.getLissageAndGram(cheminBigrammes, texte, lignes, allGrams, N);
         /**
          * ******************************Génération avec
          * perplexité*********************************************
          */
-        /*//gram.displayTable(allGrams);
-         // Permutations de la phrases 
-         // calcul de la perplexité
-         String[] Ttexte = texte.split(" ");
-         HashMap<String, Double> textePermute = new HashMap<String, Double>();
+        //gram.displayTable(allGrams);
+        // Permutations de la phrases 
+        // calcul de la perplexité
+        String[] Ttexte = texte.split(" ");
+        HashMap<String, Double> textePermute = new HashMap<String, Double>();
 
-         // on cherche toute les permutations possible
-         textePermute = gram.anagramma(Ttexte, 0, textePermute);
+        // on cherche toute les permutations possible
+        textePermute = gram.anagramma(Ttexte, 0, textePermute);
 
-         /*On calcul la perplexité pour chaque permutation
-         Set cles = textePermute.keySet();
-         Iterator it = cles.iterator();
-      
+        //On calcul la perplexité pour chaque permutation
+        Set cles = textePermute.keySet();
+        Iterator it = cles.iterator();
 
-         while (it.hasNext()) {
-         texte = (String) it.next();
-         double prob = gram.maximumVraissemblanceLissageLaplace(tailleCorpus, texte, lignes, allGrams, N);
-         double plogEvaluation = gram.perplexite(tailleCorpus, prob, texte, lignes);
-         textePermute.put(texte, plogEvaluation);
-         }
+        while (it.hasNext()) {
+            texte = (String) it.next();
+            double prob = gram.maximumVraissemblanceLissageLaplace(texte, lignes, allGrams, N);
+            double plogEvaluation = gram.perplexite(prob, texte);
+            textePermute.put(texte, plogEvaluation);
+        }
 
-         //on chercher la perplexité la plus faible
-         double valueSave = 1000000000; // permet d'initialiser la premiere valeur
-         String texteEnOrdre = "";
-         for (String mapKey : textePermute.keySet()) {
-         double value = textePermute.get(mapKey);
-         if (value <= valueSave) {
-         valueSave = value;
-         texteEnOrdre = mapKey;
-         }
-         }
-        
-         //********************************affichage**********************************
-         System.out.println("Voici les tokens dans le bon ordre : ");
-         System.out.println(texteEnOrdre);
+        //on chercher la perplexité la plus faible
+        double valueSave = 1000000000; // permet d'initialiser la premiere valeur
+        String texteEnOrdre = "";
+        for (String mapKey : textePermute.keySet()) {
+            double value = textePermute.get(mapKey);
+            if (value <= valueSave) {
+                valueSave = value;
+                texteEnOrdre = mapKey;
+            }
+        }
 
-         //On recherche dans le lexique leurs correspondance
-         //On récupère le contenu du fichier
+        //********************************affichage**********************************
+        System.out.println("Voici les tokens dans le bon ordre : ");
+        System.out.println(texteEnOrdre);
 
-         //On traduit la phrase
-         String phrase = gram.translateTokens(lexique, texteEnOrdre);
-         System.out.println("Phrase traduite : ");
-         System.out.println(phrase);*/
+        //On recherche dans le lexique leurs correspondance
+        //On récupère le contenu du fichier
+        //On traduit la phrase
+        String phrase = gram.translateTokens(lexique, texteEnOrdre);
+        System.out.println("Phrase traduite : ");
+        System.out.println(phrase);
+
         //QUESTION P3 1 
-        System.out.println("Q1");
+        System.out.println("nAVEC EMISSION Q1");
 
         String[] allMinEm = gram.getAllMinEMissionEtape();
         gram.displayTable(allMinEm);
 
-        System.out.println("Q2");
+        System.out.println(" \nAVEC EMISSION ET TRANSITION Q2");
         gram.initViterbi();
 
         // ON chercher les indices  
@@ -670,21 +693,35 @@ public class GramAndViterbi {
          * *******************************************************************
          */
         /* TP4 */
-        String table = "ratp_en_fr.code";
         /* TP4 */
         //phrase 
-        String phraseToken = "the door of the house";
+        System.out.println("\nTP4");
+        String phraseToken = "the stuff stolen Spectacle";
+
         System.out.println("La phrase : " + phraseToken);
         //nombre de mots dans la phrase
         int nombresMots = gram.countMotsPhrase(phraseToken);
         System.out.println("Il y a " + nombresMots + " mots");
 
-        // on fait le nouveau treillis
-        gram.buildTreilli(table, cheminNewTreillis);
+        //TRADUCTEUR AUTOMATIQUE NAIF
+        //Table de traduction + phrase (tokeneise)
+        // on traduit la phrase en token
+        System.out.println(tableTraduction);
+        phraseToken = gram.translatePhrase(lexiqueAnglais, phraseToken);
+        System.out.println(phraseToken);
+        gram.traducteurNaif(tableTraduction, phraseToken, cheminNewTreillis);
 
-        // on insert le nouveau treillis
-        gram.insertTreillis(newTreillis);
     }
 
+    private void traducteurNaif(String tableTraduction, String phraseToken, String cheminNewTreillis) throws IOException {
+        int le = phraseToken.length(); // taille de la phrasetoken
+        //ON GENERE LE TREILLIS
+        // on fait le nouveau treillis A INSERER UNE SEUL FOIS  
+        buildTreilli(tableTraduction, cheminNewTreillis);
+        String newTreillis = readFileQuick(cheminNewTreillis, StandardCharsets.UTF_8);
+
+        // on insert le nouveau treillis
+        insertTreillis(newTreillis);
+    }
 
 }
