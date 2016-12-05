@@ -3,7 +3,10 @@
  */
 package gramandviterbi;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -144,6 +147,16 @@ public class GramAndViterbi {
         tailleCorpus = count;
     }
 
+    private int countMotsPhrase(String phrase) {
+        String[] lignes = phrase.split(" ");
+        int count = 0;
+        for (int i = 0; i < lignes.length; i++) {
+            String[] t = lignes[i].split(" ");
+            count = count + t.length;
+        }
+        return count;
+    }
+
     // retourner le nombre d'occurence d'un char
     public int compteurChar(String str, char ch) {
         int compteur = 0;
@@ -252,7 +265,7 @@ public class GramAndViterbi {
         return phraseTraduite;
     }
 
-    public void getLissageAndGram(String texte, String[] lignes, HashMap<String, Integer> allGrams, int N) {
+    public void getLissageAndGram(String chemin,String texte, String[] lignes, HashMap<String, Integer> allGrams, int N) {
 
         Iterator i = allGrams.keySet().iterator();
         String save = "";
@@ -270,12 +283,12 @@ public class GramAndViterbi {
             }
 
         }
-        writeFile(save);
+        writeFile(save,chemin);
     }
 
-    public void writeFile(String texte) {
+    public void writeFile(String texte, String chemin) {
         try {
-            File ff = new File("src/gramandviterbi/bigramme.txt"); // définir l'arborescence
+            File ff = new File(chemin); // définir l'arborescence
             ff.createNewFile();
             FileWriter ffw = new FileWriter(ff);
             ffw.write(texte);  // écrire une ligne dans le fichier resultat.txt
@@ -295,6 +308,33 @@ public class GramAndViterbi {
                 System.out.println(value.get(i));
             }
             System.out.println("Fin étape\n");
+        }
+    }
+
+   //creation d'un nouveau treillis
+    public void buildTreilli(String ratp_en_fr, String chemin) {
+        try {
+            String treillis = "";
+
+            BufferedReader buff = new BufferedReader(new FileReader(ratp_en_fr));
+
+            String line;
+            int currentCol = -1;
+            while ((line = buff.readLine()) != null) {
+                String[] mots = line.split(" ");
+                Integer i1 = Integer.parseInt(mots[0]);
+                String i2 = mots[1];
+                String i3 = mots[2];
+
+                if (i1 != currentCol) {
+                    currentCol = i1;
+                    treillis = treillis + "%col " + currentCol + "\n";
+                }
+                treillis = treillis + i2 + " " + i3 + "\n";
+            }
+            writeFile(treillis, chemin);
+        } catch (FileNotFoundException e) {
+        } catch (IOException e) {
         }
     }
 
@@ -491,7 +531,7 @@ public class GramAndViterbi {
                     System.out.println("ede");
                     indice = i;
                 }
-            }else{
+            } else {
                 break;
             }
         }
@@ -508,6 +548,12 @@ public class GramAndViterbi {
         final String cheminCorpusTokenize = "src/gramandviterbi/corpusTokens.txt";
         final String cheminBigrammes = "src/gramandviterbi/bigramme.txt";
         final String cheminLexique = "src/gramandviterbi/lexique_np.fr.code.txt";
+        final String cheminCorpus_ratp_bilangEn = "src/gramandviterbi/corpus_ratp_bilang.en";
+        final String cheminCorpus_ratp_bilangFr = "src/gramandviterbi/corpus_ratp_bilang.fr";
+        final String cheminLexique_ratp_en = "src/gramandviterbi/lexique_ratp_en.txt";
+        final String cheminLexique_ratp_fr = "src/gramandviterbi/lexique_ratp_fr.txt";
+        final String cheminTable_ratp_en_fr = "src/gramandviterbi/table_ratp_en_fr_20iter.code";
+        final String cheminNewTreillis = "src/gramandviterbi/newTreillis.txt";
 
         //Read file
         // On récupère le contenu du fichier
@@ -515,6 +561,12 @@ public class GramAndViterbi {
         lexique = gram.readFileQuick(cheminLexique, StandardCharsets.UTF_8);
         String strTreillis = gram.readFileQuick(cheminTreillis, StandardCharsets.UTF_8);
         String bigrammes = gram.readFileQuick(cheminBigrammes, StandardCharsets.UTF_8);
+        String corpusAnglais = gram.readFileQuick(cheminCorpus_ratp_bilangEn, StandardCharsets.UTF_8);
+        String corpusFrancais = gram.readFileQuick(cheminCorpus_ratp_bilangFr, StandardCharsets.UTF_8);
+        String lexiqueAnglais = gram.readFileQuick(cheminLexique_ratp_en, StandardCharsets.UTF_8);
+        String lexiqueFrancais = gram.readFileQuick(cheminLexique_ratp_fr, StandardCharsets.UTF_8);
+        String table_ratp_en_fr = gram.readFileQuick(cheminTable_ratp_en_fr, StandardCharsets.UTF_8);
+        String newTreillis = gram.readFileQuick(cheminNewTreillis, StandardCharsets.UTF_8);
 
         // on compte le nombre de tokens dans le corpus
         gram.countAll();
@@ -539,7 +591,7 @@ public class GramAndViterbi {
         //String[] lignes = gram.wrapLine(corpusTokenize);
         //HashMap<String, Integer> allGrams = gram.getModeles(lignes, N);
         //texte tonkenize + le corpus sous formesDeLignes tous les grams du texte et l'indice de mon bigramme
-        //gram.getLissageAndGram(texte, lignes, allGrams, N);
+       // gram.getLissageAndGram(cheminBigrammes,texte, lignes, allGrams, N);
         /**
          * ******************************Génération avec
          * perplexité*********************************************
@@ -610,5 +662,29 @@ public class GramAndViterbi {
 
         System.out.println(gram.translateTokens(lexique, tokens));
 
+        /**
+         * *******************************************************************
+         */
+        /* TP4                                                                */
+        /**
+         * *******************************************************************
+         */
+        /* TP4 */
+        String table = "ratp_en_fr.code";
+        /* TP4 */
+        //phrase 
+        String phraseToken = "the door of the house";
+        System.out.println("La phrase : " + phraseToken);
+        //nombre de mots dans la phrase
+        int nombresMots = gram.countMotsPhrase(phraseToken);
+        System.out.println("Il y a " + nombresMots + " mots");
+
+        // on fait le nouveau treillis
+        gram.buildTreilli(table, cheminNewTreillis);
+
+        // on insert le nouveau treillis
+        gram.insertTreillis(newTreillis);
     }
+
+
 }
