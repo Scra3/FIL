@@ -3,11 +3,8 @@
  */
 package gramandviterbi;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -38,6 +35,7 @@ public class GramAndViterbi {
     static LinkedHashMap<String, ArrayList<String>> treillis;
     static String lexique;
     static String corpus;
+    static int nb2Gram;
 
     //Afficher un tableau de string
     private void displayTable(String[] tableau) {
@@ -106,7 +104,7 @@ public class GramAndViterbi {
     private HashMap<String, Integer> getModeles(String[] lignes, int N) {
         GramAndViterbi gram = new GramAndViterbi();
         HashMap<String, Integer> map = new HashMap<String, Integer>();
-
+        nb2Gram = 0;
         // Pour chaque ligne
         for (int i = 0; i < lignes.length; i++) {
             String[] modele = gram.getModele(lignes[i], N);
@@ -118,7 +116,10 @@ public class GramAndViterbi {
                 } else {
                     map.put(modele[j], 1);
                 }
-
+                // on compte les n grams
+                if (j != 0) {
+                    nb2Gram++;
+                }
             }
         }
 
@@ -173,7 +174,7 @@ public class GramAndViterbi {
         int nombreMotsCorpus = tailleCorpus;
         GramAndViterbi gram = new GramAndViterbi();
         final double alphaLaplace = 1;
-        double a, b;
+        double a, b,x;
         double prob = 0.0;
         double P;
         // on compte le nombre de mot du corpus 
@@ -187,19 +188,21 @@ public class GramAndViterbi {
 
                 // si la taille n'est pas de N-gram
                 if (Ttexte[i].split(" ").length <= N - 1) {
-                    b = (double) nombreMotsCorpus;
                     a = (double) gram.countWithRegex(lignes, Pattern.quote(Ttexte[i]));
-
+                    //b = (double) nombreMotsCorpus;
+                    b = (double) nombreMotsCorpus - nb2Gram;
+                    x = nombreMotsCorpus - nb2Gram;;
                     // si la taille es de N-gram
                 } else {
                     String wmoins1 = Ttexte[i].split(" ")[0];
 
                     b = (double) gram.countWithRegex(lignes, Pattern.quote(wmoins1));
                     a = (double) pair.get(Ttexte[i]);
+                    x = nb2Gram;
                 }
 
                 // si la séquence existe dans le corpus
-                P = -Math.log((a + alphaLaplace) / (b + (nombreMotsCorpus * alphaLaplace)));
+                P = -Math.log((a + alphaLaplace) / (b + (x * alphaLaplace)));
 
             } else {
                 // si la séquence n'existe pas dans le corpus
@@ -398,7 +401,7 @@ public class GramAndViterbi {
 
     }
 
-    // return tous les min emissions des étapes
+    // return tous les min emissions des étapes : ATTENTION FONCTIONNE SEULEMENT POUR LE TP VITERBI  => 2
     protected String[] getAllMinEMissionEtape() {
         int tailleTreillis = treillis.size();
         String[] mins = new String[tailleTreillis];
@@ -410,17 +413,18 @@ public class GramAndViterbi {
 
     //La fonction trouve_min_alpha(i) permet de trouver l’indice m de la plus petite valeur de alpha à la position i
     protected int trouveMinAlpha(int indice) {
-        double i = alpha[indice][0];
+        double i = alpha[indice][1];
         int save = 0;
         // trouver la plus petite valeur 
         for (int j = 0; j < treillis.get(Integer.toString(indice)).size(); j++) {
+            //System.out.println(alpha[indice][j]);
 
             if (alpha[indice][j] < i) {
                 i = alpha[indice][j];
                 save = j;
             }
         }
-
+        //System.out.println("ezfiefezfzeifezifezfihizef " + save);
         return save;
     }
 
@@ -489,9 +493,11 @@ public class GramAndViterbi {
 
     // initialise alpha et beta avec l'étape 1 du treillis
     protected void initViterbi() {
+        beta = null;
+        alpha = null;
         int n = treillis.get("0").size();
-        alpha = new Double[treillis.size()][n];
-        beta = new Double[treillis.size() + 1][n]; // size+1 Pour trouver le derniere élément du treillis
+        alpha = new Double[treillis.size()][1000];
+        beta = new Double[treillis.size() + 1][1000]; // size+1 Pour trouver le derniere élément du treillis
 
         for (int i = 0; i < treillis.get("0").size(); i++) {
 
@@ -518,6 +524,7 @@ public class GramAndViterbi {
         // On ne fait pas l'étape une car on vient de la faire préalablement avec initVIterbi
         for (i = 1; i < treillis.size(); i++) {
             indiceMin = trouveMinAlpha(i - 1);
+
             for (int j = 0; j < treillis.get(Integer.toString(i)).size(); j++) {
                 //ON vérifie que le mot existe , si il existe pas on applique le lissage de laplace
                 // on fabrique
@@ -534,9 +541,7 @@ public class GramAndViterbi {
                 }
 
                 double P = Double.parseDouble(estimationModele.get(mot));
-
                 alpha[i][j] = alpha[i - 1][indiceMin] + getPE(treillis.get(Integer.toString(i)).get(j)) + P;
-                //afficher alpha
 
                 beta[i][j] = (double) indiceMin;
             }
@@ -561,6 +566,122 @@ public class GramAndViterbi {
         }
         int tailleTreillis = treillis.size();
         beta[tailleTreillis][0] = indice;
+    }
+
+    public String getAllMinEmmissionTP4(String phraseTokens) {
+        String[] tokens = phraseTokens.split(" ");
+        String bestTokens = null;
+        double bestPT = 10000;
+        int saveIndice = 0;
+        for (int i = 0; i < tokens.length; i++) {
+            // on doit chercher le col correspondant au token puis on recupere l'ensemble des tokens et on get le grand pLog
+            if (treillis.get(tokens[i]) != null) {
+                                  //  System.out.println("TOKENS "+ tokens[i]);
+
+                // on récupere le meilleur PE dans l'array
+                for (int j = 0; j < treillis.get(tokens[i]).size(); j++) {
+                    //System.out.println( treillis.get(tokens[i]));
+                    double verif = getPE(treillis.get(tokens[i]).get(j));
+                    if (bestPT > verif) {
+                        saveIndice = j;
+                        bestPT = verif;
+                    }
+                }
+                if (bestTokens == null) {
+                    bestTokens = getMot(treillis.get(tokens[i]).get(saveIndice));
+                } else {
+                    bestTokens = bestTokens + " " + getMot(treillis.get(tokens[i]).get(saveIndice));
+
+                }
+                bestPT = 1000;
+                saveIndice = 0;
+            }
+        }
+        return bestTokens;
+    }
+
+    private void traducteurViterbi(String phraseToken, String tableTraduction, String cheminNewTreillis, String lexiqueFrancais) throws IOException {
+        System.out.println(phraseToken);
+        // on va reproduire un treilli uniquement pour viterbi 
+        //IL FAUT CONSTRUIRE UN SRING SOUS FORME DE TREILLIS
+        //%col 0
+        //18956 1.25
+        //65466 5.6 etc
+        String[] TphraseToken = phraseToken.split(" ");
+        String factoryTreillis = "";
+        String save = "";
+        String[] TtableTraduction = tableTraduction.split("\n");
+        boolean find = false;
+        for (int i = 0; i < TphraseToken.length; i++) {
+            for (int j = 0; j < TtableTraduction.length; j++) {
+                // on récupere le premiere token
+                String[] elements = TtableTraduction[j].split(" ");
+                if (TphraseToken[i].equals(elements[0])) {
+                    factoryTreillis = factoryTreillis + "\n" + elements[1] + " " + elements[2];
+                    find = true;
+                }
+
+                // pour ne pas parcourir pour rien car on deja trouve nos elements
+                if (find == true && !TphraseToken[i].equals(elements[0])) {
+                    find = false;
+                    break;
+                }
+            }
+            if (save.equals("")) {
+                save = "%col " + i + factoryTreillis;
+
+            } else {
+                save = save + "\n%col " + i + factoryTreillis;
+            }
+            factoryTreillis = "";
+        }
+
+        //writeFile(save,cheminNewTreillis);
+        insertTreillis(save);
+        writeFile(save, cheminNewTreillis);
+        initViterbi();
+
+        //Affichage du texte trouvé avec viterbi  
+        int a = (int) ((double) beta[1][0]);
+        String tokens = getMot(treillis.get("0").get(a));
+        for (int i = 2; i < beta.length; i++) {
+            a = (int) ((double) beta[i][0]);
+            tokens = tokens + " " + getMot(treillis.get(Integer.toString(i - 1)).get(a));
+        }
+        System.out.println("Tokens traduction  " + tokens);
+
+        System.out.println(translateTokens(lexiqueFrancais, tokens));
+    }
+
+    private String traducteurNaif(String tableTraduction, String phraseToken, String cheminNewTreillis, String lexiqueFrancais) throws IOException {
+        int le = phraseToken.length(); // taille de la phrasetoken
+        String phraseTraduite = null;
+        String phraseTraduiteEnFrancais = null;
+        //ON GENERE LE TREILLIS
+        // on fait le nouveau treillis A INSERER UNE SEUL FOIS  
+        buildTreilli(tableTraduction, cheminNewTreillis);
+        // on le récupere dans le fichier
+        String newTreillis = readFileQuick(cheminNewTreillis, StandardCharsets.UTF_8);
+        // on insert le nouveau treillis
+        // ATENTION LE TREILLIS COMMENCE à 1
+        insertTreillis(newTreillis);
+
+        //RECUPERER LA MEILLEUR PROBABILITE DE TRANSITION POUR CHAQUE TREILLIS : les tokens sont en francais
+        phraseTraduite = getAllMinEmmissionTP4(phraseToken);
+        //ON TRADUIT LA PRASE QU ON RECUPERE
+        System.out.println("Tokens traduction " + phraseTraduite);
+
+        phraseTraduiteEnFrancais = translateTokens(lexiqueFrancais, phraseTraduite);
+        return phraseTraduiteEnFrancais;
+    }
+
+    private String concatStringTable(String[] tableString) {
+        String string = null;
+        string = tableString[0];
+        for (int i = 1; i < tableString.length; i++) {
+            string = string + " " + tableString[i];
+        }
+        return string;
     }
 
     public static void main(String[] args) throws IOException {
@@ -663,7 +784,7 @@ public class GramAndViterbi {
         System.out.println(phrase);
 
         //QUESTION P3 1 
-        System.out.println("nAVEC EMISSION Q1");
+        System.out.println("AVEC EMISSION Q1");
 
         String[] allMinEm = gram.getAllMinEMissionEtape();
         gram.displayTable(allMinEm);
@@ -696,32 +817,21 @@ public class GramAndViterbi {
         /* TP4 */
         //phrase 
         System.out.println("\nTP4");
-        String phraseToken = "the stuff stolen Spectacle";
+        String phraseToken = "I want to go to Paris by bus or underground";
 
         System.out.println("La phrase : " + phraseToken);
         //nombre de mots dans la phrase
         int nombresMots = gram.countMotsPhrase(phraseToken);
         System.out.println("Il y a " + nombresMots + " mots");
 
-        //TRADUCTEUR AUTOMATIQUE NAIF
+        //TRADUCTEUR AUTOMATIQUE NAIF Q1 TP4
         //Table de traduction + phrase (tokeneise)
         // on traduit la phrase en token
-        System.out.println(tableTraduction);
         phraseToken = gram.translatePhrase(lexiqueAnglais, phraseToken);
         System.out.println(phraseToken);
-        gram.traducteurNaif(tableTraduction, phraseToken, cheminNewTreillis);
+        //ON AFFICHE LA PHRASE TRADUITE UNIQUEMENT AVEC LES PROBS DE TRADUCTION
+        System.out.println(gram.traducteurNaif(tableTraduction, phraseToken, cheminNewTreillis, lexiqueFrancais));
 
+        gram.traducteurViterbi(phraseToken, tableTraduction, cheminNewTreillis, lexiqueFrancais);
     }
-
-    private void traducteurNaif(String tableTraduction, String phraseToken, String cheminNewTreillis) throws IOException {
-        int le = phraseToken.length(); // taille de la phrasetoken
-        //ON GENERE LE TREILLIS
-        // on fait le nouveau treillis A INSERER UNE SEUL FOIS  
-        buildTreilli(tableTraduction, cheminNewTreillis);
-        String newTreillis = readFileQuick(cheminNewTreillis, StandardCharsets.UTF_8);
-
-        // on insert le nouveau treillis
-        insertTreillis(newTreillis);
-    }
-
 }
